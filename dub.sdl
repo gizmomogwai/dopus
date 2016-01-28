@@ -1,0 +1,8 @@
+name "dopus"
+description "Directory Opus in D."
+copyright "Copyright © 2016, gizmo"
+authors "gizmo"
+license "MIT"
+dependency "dunit" version="1.0.12"
+dependency "rainbow" version="0.0.2"
+mainSourceFile "source/app.d"
