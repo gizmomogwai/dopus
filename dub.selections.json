@@ -1,7 +1,14 @@
 {
 	"fileVersion": 1,
 	"versions": {
+		"dsfml": "2.1.0",
 		"rainbow": "0.0.2",
+		"dlangui": "~master",
+		"derelict-util": "2.0.4",
+		"x11": "1.0.11",
+		"derelict-ft": "1.0.2",
+		"derelict-gl3": "1.0.18",
+		"derelict-sdl2": "1.9.7",
 		"dunit": "1.0.12"
 	}
 }
