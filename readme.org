@@ -1,0 +1,5 @@
+* DOpus
+[[https://www.gpsoft.com.au/][Directory Opus]] is still alive, but I wanted to do something similar in a modern language.
+
+** Design choices
+- Nothing is ever allowed to block the ui thread.
