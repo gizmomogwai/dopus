@@ -5,6 +5,7 @@ import std.array;
 import std.file;
 import std.path;
 import std.concurrency;
+import std.format;
 
 import core.thread;
 
@@ -12,34 +13,10 @@ import dlangui;
 
 mixin APP_ENTRY_POINT;
 
-class UpdateList : Thread {
-  Window w;
-  ListWidget lw;
-  StringListAdapter adapter;
-  this(Window w, ListWidget lw, StringListAdapter adapter) {
-    super(&run);
-    this.w = w;
-    this.lw = lw;
-    this.adapter = adapter;
-  }
-  private void run() {
-    int i=0;
-    while (true) {
-      auto h = "teststring: "d ~ (i++).to!dstring;
-      sleep(dur!("seconds")( 1 ));
-      //      lw.executeInUiThread(delegate() {
-      writeln(h);
-      adapter.add(h);
-      w.invalidate();
-      //   });
-    }
-  }
-}
-
 struct Finished {
 }
 
-void collectFiles(string path, Tid parent) {
+void listFiles(string path, Tid parent) {
   foreach (DirEntry dirEntry; dirEntries(path, SpanMode.shallow)) {
     parent.send(dirEntry);
   }
@@ -47,71 +24,170 @@ void collectFiles(string path, Tid parent) {
   parent.send(f);
 }
 
-void collectAndWaitForFinish(string path, shared Lister lister) {
-  spawn(&collectFiles, path, thisTid());
+void mySpawn(void function(string, Tid) f, string path, void delegate(DirEntry entry) forward) {
+  auto child = spawn(f, path, thisTid());
   bool finished = false;
   while (!finished) {
     receive(
-
-            (DirEntry entry) {
-              lister.add(entry);
-            },
-
-            (Finished f)  {
-              writeln("scan finished" ~ to!string(f));
+            forward,
+            (Finished f) {
+              writeln("finished");
               finished = true;
-            }
-
-            );
+            });
   }
 }
 
-class Lister {
+class FileInfo {
+public:
+  const ulong size;
+  const ulong nrOfFiles;
+  this(ulong size_=0, ulong nrOfFiles_=0) {
+    size = size_;
+    nrOfFiles = nrOfFiles_;
+  }
+  FileInfo add(ulong size_) {
+    return new FileInfo(size + size_, nrOfFiles+1);
+  }
+  override string toString() {
+    return "FileInfo { nrOfFiles=%s, size=%s }".format(nrOfFiles, size);
+  }
+}
+void collectFileInfo(string path) {
+  writeln("collectFileInfo started for ", path);
+  auto res = new FileInfo();
+  if (path.isDir()) {
+    foreach (DirEntry e; path.dirEntries(SpanMode.depth)) {
+      if (e.isFile()) {
+        res = res.add(e.getSize());
+      }
+    }
+  } else {
+    res = res.add(path.getSize());
+  }
+  writeln("file info: ", res);
+  writeln("collectFileInfo finished");
+}
+void showInfo(string path) {
+  writeln("show info for ", path);
+  spawn(&collectFileInfo, path);
+}
+
+class FileLister {
   Tid lister;
   Window window;
   StringListAdapter adapter;
-
-  this(string path) {
+  string path;
+  this(string path_) {
+    path = path_;
     window = Platform.instance.createWindow(to!dstring("Lister: " ~ path), null);
     adapter = new StringListAdapter();
     auto fileList = new ListWidget("filelist", Orientation.Vertical);
     fileList.adapter = adapter;
+    fileList.itemClick = delegate(Widget src, int itemIndex) {
+      writeln("itemClick: ");
+      return true;
+    };
+    fileList.click = delegate(Widget w) {
+      writeln("click: ");
+      return true;
+    };
+    fileList.keyEvent = delegate(Widget w, KeyEvent e) {
+      writeln("keyEvent: ", e.action.to!string, ", ", e.keyCode.to!string, ", ", e.text);
+      auto h = path ~ "/" ~ adapter.items.get((cast(ListWidget)w).selectedItemIndex).to!string;
+      if (e.text == "i"d) {
+        showInfo(h);
+      } else if (e.text == "n"d) {
+        read(h);
+      }
+      return true;
+    };
     window.mainWidget = fileList;
     window.show();
-    lister = spawn(&collectAndWaitForFinish, path, cast(shared)this);
+    read(path);
   }
 
-  void add(DirEntry entry) shared {
+  void read(string path) {
+    adapter.clear();
+    lister = spawn(&mySpawn, &listFiles, path, cast(shared)&add);
+  }
+
+  void add(DirEntry entry) {
     window.executeInUiThread(delegate() {
-        writeln(entry.name);
-        (cast(StringListAdapter)adapter).add(entry.name.baseName.to!dstring);
-        (cast(Window)window).invalidate();
+        auto s = entry.name.baseName.to!dstring;
+        if (entry.isDir) {
+          s ~= "/"d;
+        }
+        adapter.add(s);
+        window.invalidate();
       });
   }
 }
 
-/// entry point for dlangui based application
-extern (C) int UIAppMain(string[] args) {
-  Lister[string] listers;
-  //  Window[] w;
+FileLister[string] listers;
+void fileLister(string[] args) {
   foreach (string path; args[1..$]) {
-    Lister l = new Lister(path);
+    auto l = new FileLister(path);
     listers[path] = l;
-    //    auto window = Platform.instance.createWindow(to!dstring("Lister: " ~ path), null);
-    //  window.show();
-    //  w ~= window;
-    //Thread.sleep(dur!("seconds")(5));
   }
-  /+
-   for (int i=0; i<10; i++) {
-   Window window = Platform.instance.createWindow(to!dstring("DlangUI example - HelloWorld" ~ to!string(i)), null);
-   auto lw = new ListWidget("list1", Orientation.Vertical);
-   window.mainWidget = lw;
-   StringListAdapter stringList = new StringListAdapter();
-   lw.adapter = stringList;
-   stringList.add(to!dstring("test" ~ to!string(i)));
-   window.show();
-   }
-   +/
+}
+
+void threadedStuff() {
+  class Stuff {
+    public int i;
+  }
+  class MyThread : Thread {
+    TextWidget tw;
+    Window w;
+    this(TextWidget tw_, Window w_) {
+      super(&run);
+      tw = tw_;
+      w = w_;
+    }
+
+    private void run() {
+      Stuff s = new Stuff;
+      s.i = 10;
+      for (int i=0; i<10; i++) {
+        s.i++;
+        tw.executeInUiThread(delegate() {
+            tw.text = "test"d ~ to!dstring(s.i);
+            tw.invalidate();
+            w.invalidate();
+          });
+        Thread.sleep(dur!("seconds")(2));
+      }
+    }
+  }
+
+  Window window = Platform.instance.createWindow(to!dstring("DlangUI example - HelloWorld"), null);
+  TextWidget tw = new TextWidget("text1");
+  tw.text = "test"d;
+  new MyThread(tw, window).start();
+  auto vl = new VerticalLayout("layout");
+  vl.addChild(tw);
+  window.mainWidget = vl;
+  window.show();
+}
+
+void spawned(TextWidget tw, Window w) {
+  (cast(TextWidget)tw).executeInUiThread(delegate() {
+      (cast(TextWidget)tw).text = "test1"d;
+      (cast(TextWidget)tw).invalidate();
+      (cast(TextWidget)w).invalidate();
+    });
+}
+//void spawnStuff() {
+//  Window window = Platform.instance.createWindow(to!dstring("DlangUI example - HelloWorld"), null);
+//  TextWidget tw = new TextWidget("text1");
+//  tw.text = "test"d;
+//
+//  mySpawn(&spawned, tw, window);
+//  window.show();
+//}
+
+extern (C) int UIAppMain(string[] args) {
+  fileLister(args);
+  //threadedStuff();
+  //spawnStuff();
   return Platform.instance.enterMessageLoop();
 }
