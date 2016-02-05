@@ -75,13 +75,14 @@ void showInfo(string path) {
 class FileLister {
   Tid lister;
   Window window;
+  ListWidget fileList;
   StringListAdapter adapter;
   string path;
   this(string path_) {
     path = path_;
     window = Platform.instance.createWindow(to!dstring("Lister: " ~ path), null);
     adapter = new StringListAdapter();
-    auto fileList = new ListWidget("filelist", Orientation.Vertical);
+    fileList = new ListWidget("filelist", Orientation.Vertical);
     fileList.adapter = adapter;
     fileList.itemClick = delegate(Widget src, int itemIndex) {
       writeln("itemClick: ");
@@ -97,18 +98,28 @@ class FileLister {
       if (e.text == "i"d) {
         showInfo(h);
       } else if (e.text == "n"d) {
-        read(h);
+        visit(h);
+      } else if (e.keyCode == 8 && e.action == KeyAction.KeyUp) {
+        visit(dirName(path));
       }
       return true;
     };
     window.mainWidget = fileList;
     window.show();
-    read(path);
+    visit(path);
   }
 
-  void read(string path) {
+  void visit(string path_) {
+    writeln("read: ", path_);
+    auto absPath = buildNormalizedPath(absolutePath(path_));
+    writeln("absPath: ", absPath);
+    path = absPath;
+
+    window.windowCaption = path.to!dstring;
+    fileList.selectedItemIndex = 0;
     adapter.clear();
-    lister = spawn(&mySpawn, &listFiles, path, cast(shared)&add);
+    
+    lister = spawn(&mySpawn, &listFiles, absPath, cast(shared)&add);
   }
 
   void add(DirEntry entry) {
