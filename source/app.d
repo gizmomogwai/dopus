@@ -7,21 +7,11 @@ import std.path;
 import std.concurrency;
 import std.format;
 
-import core.thread;
-
 import dlangui;
 
 mixin APP_ENTRY_POINT;
 
 struct Finished {
-}
-
-void listFiles(string path, Tid parent) {
-  foreach (DirEntry dirEntry; dirEntries(path, SpanMode.shallow)) {
-    parent.send(dirEntry);
-  }
-  Finished f;
-  parent.send(f);
 }
 
 void mySpawn(void function(string, Tid) f, string path, void delegate(DirEntry entry) forward) {
@@ -45,31 +35,109 @@ public:
     size = size_;
     nrOfFiles = nrOfFiles_;
   }
+
   FileInfo add(ulong size_) {
     return new FileInfo(size + size_, nrOfFiles+1);
   }
+
   override string toString() {
     return "FileInfo { nrOfFiles=%s, size=%s }".format(nrOfFiles, size);
   }
 }
-void collectFileInfo(string path) {
-  writeln("collectFileInfo started for ", path);
-  auto res = new FileInfo();
-  if (path.isDir()) {
-    foreach (DirEntry e; path.dirEntries(SpanMode.depth)) {
-      if (e.isFile()) {
-        res = res.add(e.getSize());
-      }
-    }
-  } else {
-    res = res.add(path.getSize());
+
+
+shared class BackgroundTask {
+  Tid task;
+
+  shared FileLister fileLister;
+
+  string path;
+
+  this(shared FileLister fileLister_, string path_) {
+    fileLister = fileLister_;
+    path = path_;
   }
-  writeln("file info: ", res);
-  writeln("collectFileInfo finished");
+
+  private static void runBackgroundTask(shared BackgroundTask t) {
+    t.run();
+  }
+
+  private static void waitForBackgroundTask(shared BackgroundTask t) {
+    auto child = spawn(&runBackgroundTask, t);
+    bool finished = false;
+    while (!finished) {
+      finished = t.receiveMessages();
+    }
+  }
+
+  public void start() {
+    spawn(&waitForBackgroundTask, cast(shared)this);
+  }
+
+  public bool receiveMessages() {
+    receive(
+            (Finished f) {
+              writeln("finished");
+              return true;}
+            );
+    return false;
+  }
+
+  public abstract void run() shared;
 }
-void showInfo(string path) {
-  writeln("show info for ", path);
-  spawn(&collectFileInfo, path);
+
+class FileInfoBackgroundTask : BackgroundTask {
+
+  this(shared FileLister lister, string path) {
+    super(lister, path);
+  }
+
+  public override void run() shared {
+    auto fileInfo = collectFileInfo(path);
+    writeln(fileInfo);
+    ownerTid.send(Finished());
+  }
+
+  private FileInfo collectFileInfo(string path) shared {
+    auto res = new FileInfo();
+    if (path.isDir()) {
+      foreach (DirEntry e; path.dirEntries(SpanMode.depth)) {
+        if (e.isFile()) {
+          res = res.add(e.getSize());
+        }
+      }
+    } else {
+      res = res.add(path.getSize());
+    }
+    return res;
+  }
+}
+
+class FillListerBackgroundTask : BackgroundTask {
+  this(shared FileLister lister, string path) {
+    super(lister, path);
+  }
+
+  public override void run() shared {
+    foreach (DirEntry dirEntry; dirEntries(path, SpanMode.shallow)) {
+      ownerTid.send(dirEntry);
+    }
+    Finished f;
+    ownerTid.send(f);
+  }
+
+  public override bool receiveMessages() {
+    receive(
+            (DirEntry e) {
+              fileLister.add(e);
+            },
+            (Finished f) {
+              writeln("filllister finished");
+              return true;
+            },
+            );
+    return false;
+  }
 }
 
 class FileLister {
@@ -96,7 +164,7 @@ class FileLister {
       writeln("keyEvent: ", e.action.to!string, ", ", e.keyCode.to!string, ", ", e.text);
       auto h = path ~ "/" ~ adapter.items.get((cast(ListWidget)w).selectedItemIndex).to!string;
       if (e.text == "i"d) {
-        showInfo(h);
+        new shared(FileInfoBackgroundTask)(cast(shared)this, h).start();
       } else if (e.text == "n"d) {
         visit(h);
       } else if (e.keyCode == 8 && e.action == KeyAction.KeyUp) {
@@ -118,18 +186,18 @@ class FileLister {
     window.windowCaption = path.to!dstring;
     fileList.selectedItemIndex = 0;
     adapter.clear();
-    
-    lister = spawn(&mySpawn, &listFiles, absPath, cast(shared)&add);
+
+    new shared(FillListerBackgroundTask)(cast(shared)this, absPath).start();
   }
 
-  void add(DirEntry entry) {
-    window.executeInUiThread(delegate() {
+  void add(DirEntry entry) shared {
+    (cast(Window) window).executeInUiThread(delegate() {
         auto s = entry.name.baseName.to!dstring;
         if (entry.isDir) {
           s ~= "/"d;
         }
-        adapter.add(s);
-        window.invalidate();
+        (cast(StringListAdapter)adapter).add(s);
+        (cast(Window)window).invalidate();
       });
   }
 }
@@ -142,44 +210,6 @@ void fileLister(string[] args) {
   }
 }
 
-void threadedStuff() {
-  class Stuff {
-    public int i;
-  }
-  class MyThread : Thread {
-    TextWidget tw;
-    Window w;
-    this(TextWidget tw_, Window w_) {
-      super(&run);
-      tw = tw_;
-      w = w_;
-    }
-
-    private void run() {
-      Stuff s = new Stuff;
-      s.i = 10;
-      for (int i=0; i<10; i++) {
-        s.i++;
-        tw.executeInUiThread(delegate() {
-            tw.text = "test"d ~ to!dstring(s.i);
-            tw.invalidate();
-            w.invalidate();
-          });
-        Thread.sleep(dur!("seconds")(2));
-      }
-    }
-  }
-
-  Window window = Platform.instance.createWindow(to!dstring("DlangUI example - HelloWorld"), null);
-  TextWidget tw = new TextWidget("text1");
-  tw.text = "test"d;
-  new MyThread(tw, window).start();
-  auto vl = new VerticalLayout("layout");
-  vl.addChild(tw);
-  window.mainWidget = vl;
-  window.show();
-}
-
 void spawned(TextWidget tw, Window w) {
   (cast(TextWidget)tw).executeInUiThread(delegate() {
       (cast(TextWidget)tw).text = "test1"d;
@@ -187,18 +217,8 @@ void spawned(TextWidget tw, Window w) {
       (cast(TextWidget)w).invalidate();
     });
 }
-//void spawnStuff() {
-//  Window window = Platform.instance.createWindow(to!dstring("DlangUI example - HelloWorld"), null);
-//  TextWidget tw = new TextWidget("text1");
-//  tw.text = "test"d;
-//
-//  mySpawn(&spawned, tw, window);
-//  window.show();
-//}
 
 extern (C) int UIAppMain(string[] args) {
   fileLister(args);
-  //threadedStuff();
-  //spawnStuff();
   return Platform.instance.enterMessageLoop();
 }
