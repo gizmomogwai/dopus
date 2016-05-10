@@ -12,3 +12,8 @@
 * TODOs
 ** sorted lister view
 ** fix crash when mouse starts in emtpy area of filelister
+
+* jeder lister hat einen receiver
+- der receiver empfaengt background tasks
+- startet diese async
+- 
