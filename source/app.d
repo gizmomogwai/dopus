@@ -40,23 +40,28 @@ class TreeMapWidget : Widget {
     super.onDraw(buf);
     if (visibility != Visibility.Visible)
       return;
-    auto rc = _pos;
 
+    auto rc = _pos;
+    writeln(rc);
+    /*
+      writeln("onDraw: ", rc);
+      writeln("  width: ", width);
+      writeln("  height: ", height);
+    */
     auto saver = ClipRectSaver(buf, rc);
 
-    writeln("parent: ", node.getRect());
+    auto treemap = tm.TreeMap();
+    auto rects = treemap.layout(node, tm.Rect(0, 0, width, height));
     //buf.fillRect(Rect(20, 20, 100, 200), 0xff00ff);
 
     FontRef font = FontManager.instance.getFont(25, FontWeight.Normal, false, FontFamily.SansSerif, "Arial");
 
     foreach(tm.Node child; node.childs) {
-      auto r = child.getRect().toUiRect();
-      writeln("  child: ", r);
-      //buf.fillRect(child.getRect().toUiRect(), 0xff00ff);
-      buf.drawFrame(child.getRect().toUiRect(), 0xff00ff, Rect(1, 1, 1, 1), 0xa0a0a0);
+      auto r = rects[child].toUiRect();
+      buf.drawFrame(r, 0xff00ff, Rect(1, 1, 1, 1), 0xa0a0a0);
       font.drawText(buf,
-                    cast(int)child.getRect().x,
-                    cast(int)child.getRect().y,
+                    r.middlex,
+                    r.middley,
                     child.size.to!dstring,
                     0xff0000);
     }
@@ -66,11 +71,10 @@ class TreeMapWidget : Widget {
 extern (C) int UIAppMain(string[] args) {
   auto childs = [ 6.0, 6.0, 4.0, 3.0, 2.0, 2.0, 1.0 ].map!(v => new tm.Node(v)).array();
   auto n = new tm.Node(childs);
-  n = n.setRect(tm.Rect(0, 0, 600, 400));
-  n.layout();
   auto window = Platform.instance.createWindow(to!dstring("treemap"), null);
   auto w = new TreeMapWidget("treemap", n).backgroundColor(0x000000).layoutWidth(FILL_PARENT).layoutHeight(FILL_PARENT).padding(Rect(10,10,10,10));
   window.mainWidget = w;
   window.show();
   return Platform.instance.enterMessageLoop();
 }
+

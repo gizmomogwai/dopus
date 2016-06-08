@@ -1,0 +1,61 @@
+struct FileNode {
+  DirEntry entry;
+  ulong size;
+  FileNode[] childs;
+  this(DirEntry entry) {
+    this(entry, entry.size, null);
+  }
+  this(DirEntry entry, ulong size, FileNode[] childs) {
+    this.entry = entry;
+    this.size = size;
+    this.childs = childs;
+  }
+  ulong getSize() {
+    return size;
+  }
+  string getName() {
+    return entry.name;
+  }
+  string toString() {
+    import std.conv;
+    return "{ name: \"" ~getName() ~ "\" , size: " ~ getSize().to!string ~ " }";
+  }
+}
+
+FileNode calcFileNode(DirEntry entry) {
+  if (entry.isDir) {
+    auto childs = dirEntries(entry.name, SpanMode.shallow, false)
+      .map!(v => calcFileNode(v))
+      .array();
+    auto childSize = 0L.reduce!((sum, v) => sum + v.getSize)(childs);
+    return FileNode(entry, childSize, childs);
+  } else {
+    return FileNode(entry);
+  }
+}
+
+/*
+unittest {
+  auto res = calcFileNode(DirEntry("."));
+  writeln(res);
+}
+*/
+size_t calcSize(DirEntry entry) {
+  if (entry.isDir) {
+    size_t res = 0;
+    foreach (DirEntry e; dirEntries(entry.name, SpanMode.shallow, false)) {
+      res += calcSize(e);
+    }
+    return res;
+  } else {
+    return entry.size;
+  }
+}
+
+size_t calcSize(string file) {
+  return calcSize(DirEntry(file));
+}
+
+unittest {
+  writeln(calcSize("."));
+}
