@@ -1,12 +1,22 @@
+import std.array;
+import std.file;
+import std.stdio;
+import std.algorithm;
+
 struct FileNode {
-  DirEntry entry;
+  string name;
   ulong size;
   FileNode[] childs;
-  this(DirEntry entry) {
-    this(entry, entry.size, null);
+  bool invalid;
+  this(string name) {
+    this.name = name;
+    this.invalid = true;
   }
-  this(DirEntry entry, ulong size, FileNode[] childs) {
-    this.entry = entry;
+  this(string name, ulong size) {
+    this(name, size, null);
+  }
+  this(string name, ulong size, FileNode[] childs) {
+    this.name = name;
     this.size = size;
     this.childs = childs;
   }
@@ -14,7 +24,7 @@ struct FileNode {
     return size;
   }
   string getName() {
-    return entry.name;
+    return name;
   }
   string toString() {
     import std.conv;
@@ -26,11 +36,18 @@ FileNode calcFileNode(DirEntry entry) {
   if (entry.isDir) {
     auto childs = dirEntries(entry.name, SpanMode.shallow, false)
       .map!(v => calcFileNode(v))
-      .array();
+      .filter!(v => !v.invalid).array()
+      .sort!((a, b) => a.getSize() > b.getSize()).array();
     auto childSize = 0L.reduce!((sum, v) => sum + v.getSize)(childs);
     return FileNode(entry, childSize, childs);
   } else {
-    return FileNode(entry);
+    try {
+      size_t s = DirEntry(entry).size;
+      return FileNode(entry, s);
+    } catch (Exception e) {
+      writeln("problems with file", entry);
+      return FileNode(entry);
+    }
   }
 }
 
@@ -48,7 +65,12 @@ size_t calcSize(DirEntry entry) {
     }
     return res;
   } else {
-    return entry.size;
+    size_t res = 0;
+    try {
+      res = entry.size;
+    } catch (Exception e) {
+    }
+    return res;
   }
 }
 
@@ -58,4 +80,12 @@ size_t calcSize(string file) {
 
 unittest {
   writeln(calcSize("."));
+}
+
+@("sorting")
+unittest {
+  struct T {
+    double size;
+  }
+  writeln(sort!"a.size < b.size"([T(1), T(2), T(3), T(4), T(5)]));
 }

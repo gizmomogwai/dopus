@@ -5,7 +5,7 @@ authors "gizmo"
 license "MIT"
 
 dependency "rainbow" version="0.0.2"
-dependency "dlangui" version="~master"
+dependency "dlangui" version="0.8.30"
 
 configuration "debug" {
   targetType "executable"

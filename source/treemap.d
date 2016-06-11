@@ -15,6 +15,7 @@ import std.format;
 import std.conv;
 import std.algorithm;
 import std.range;
+import std.variant;
 
 struct Rect {
   double x;
@@ -45,138 +46,162 @@ struct Rect {
   int bottom() {
     return cast(int)(y+height);
   }
-}
-double size(Node[] nodes) {
-  return nodes.map!(v => v.size).sum;
+  bool contains(int x, int y) {
+    return x >= this.x && x < this.x+this.width &&
+      y >= this.y && y < this.y+this.height;
+  }
 }
 
-struct TreeMap {
-  Rect[Node] treeMap;
-
-  Rect[Node] layout(Node n, Rect rect) {
-    layout(n.childs, n.size, rect);
-    return treeMap;
+template TreeMap(Node) {
+  double size(Node[] nodes) {
+    return nodes.map!(v => v.size).sum;
   }
 
-  private void layout(Node[] childs, double size, Rect rect) {
-    Row row = Row(rect, size);
-    Node[] rest = childs;
-    while (rest.length > 0) {
-      Node child = rest.front();
-      Row newRow = row.add(child);
+  class TreeMap {
+    Rect[Node] treeMap;
 
-      if (newRow.worstAspectRatio > row.worstAspectRatio) {
-        layout(rest, rest.size(), row.imprint(treeMap));
-        return;
+    TreeMap layout(Node n, Rect rect) {
+      layout(n.childs, n.size, rect);
+      return this;
+    }
+
+    alias Maybe = Algebraic!(Node, typeof(null));
+    Maybe findFor(int x, int y) {
+      foreach (kv; treeMap.byKeyValue()) {
+        auto fileNode = kv.key;
+        auto rect = kv.value;
+        if (rect.contains(x, y)) {
+          Maybe res = fileNode;
+          return res;
+        }
+      }
+      Maybe res = null;
+      return res;
+    }
+
+    Rect get(Node n) {
+      return treeMap[n];
+    }
+    
+    private void layout(Node[] childs, double size, Rect rect) {
+      Row row = Row(rect, size);
+      Node[] rest = childs;
+      while (rest.length > 0) {
+        Node child = rest.front();
+        Row newRow = row.add(child);
+
+        if (newRow.worstAspectRatio > row.worstAspectRatio) {
+          layout(rest, rest.size(), row.imprint(treeMap));
+          return;
+        }
+
+        row = newRow;
+        rest.popFront();
+      }
+      row.imprint(treeMap);
+    }
+
+    /++
+     + A Row collects childnodes and provides means to layout them.
+     + To find the best rectangular treemap layout it also can find
+     + the child with the worst aspect ratio. The layouting performed in
+     + TreeMap is a two step process:
+     + - first the best row to fill the area is searched (this is done
+     +   incrementally child Node by child Node.
+     + - second the found Row is imprinted (which means the layout
+     +   coordinates are added to the child Nodes).
+     +/
+    struct Row {
+      /// the total area that the row could take
+      Rect rect;
+      /// the total size that corresponds to the total area
+      double size;
+
+      double fixedLength;
+      double variableLength;
+
+      Node[] childs;
+      double worstAspectRatio;
+      double area;
+
+      public this(Rect rect, double size) {
+        this.rect = rect;
+        this.size = size;
+        this.fixedLength = min(rect.width, rect.height);
+        this.variableLength = 0;
+        this.worstAspectRatio = double.max;
+        this.area = 0;
       }
 
-      row = newRow;
-      rest.popFront();
+      private static double aspectRatio(double size, double sharedLength, double l2) {
+        double l1 = sharedLength * size;
+        return max(l1/l2, l2/l1);
+      }
+
+      public this(Rect rect, Node[] childs, double size) {
+        this(rect, size);
+        this.childs = childs;
+        double sizeOfAllChilds = childs.size();
+        double percentageOfTotalArea = sizeOfAllChilds / size;
+        this.variableLength = max(rect.width, rect.height) * percentageOfTotalArea;
+        double height = min(rect.width, rect.height);
+        this.worstAspectRatio = childs.map!(n => aspectRatio(n.size, height / sizeOfAllChilds, variableLength)).reduce!max;
+      }
+
+      public Row add(Node n) {
+        Node[] tmp = childs ~ n;
+        return Row(rect, childs~n, size);
+      }
+
+      public Rect imprint(ref Rect[Node] treemap) {
+        if (rect.height < rect.width) {
+          return imprintLeft(treemap);
+        } else {
+          return imprintTop(treemap);
+        }
+      }
+
+      private Rect imprintLeft(ref Rect[Node] treemap) {
+        double offset = 0;
+        foreach (Node child; childs) {
+          double percentage = child.size / childs.size();
+          double height = percentage * rect.height;
+          treemap[child] = Rect(rect.x, rect.y+offset, variableLength, height);
+          offset += height;
+        }
+        return Rect(rect.x+variableLength, rect.y, rect.width-variableLength, rect.height);
+      }
+
+      private Rect imprintTop(ref Rect[Node] treemap) {
+        double offset = 0;
+        foreach(Node child; childs) {
+          double percentage = child.size / childs.size();
+          double width = percentage * rect.width;
+          treemap[child] = Rect(rect.x+offset, rect.y+0, width, variableLength);
+          offset += width;
+        }
+        return Rect(rect.x, rect.y+variableLength, rect.width, rect.height-variableLength);
+      }
     }
-    row.imprint(treeMap);
   }
 }
-
-class Node {
-  double size;
-  Node[] childs;
-  this(double size) {
-    this.size = size;
-  }
-  this(Node[] childs) {
-    this.childs = childs;
-    this.size = childs.size();
-  }
-  override string toString() {
-    return "Node { size: " ~ size.to!string ~ " }";
-  }
-}
-
-/++
- + A Row collects childnodes and provides means to layout them.
- + To find the best rectangular treemap layout it also can find
- + the child with the worst aspect ratio. The layouting performed in
- + TreeMap is a two step process:
- + - first the best row to fill the area is searched (this is done
- +   incrementally child Node by child Node.
- + - second the found Row is imprinted (which means the layout
- +   coordinates are added to the child Nodes).
- +/
-struct Row {
-  /// the total area that the row could take
-  Rect rect;
-  /// the total size that corresponds to the total area
-  double size;
-
-  double fixedLength;
-  double variableLength;
-
-  Node[] childs;
-  double worstAspectRatio;
-  double area;
-
-  public this(Rect rect, double size) {
-    this.rect = rect;
-    this.size = size;
-    this.fixedLength = min(rect.width, rect.height);
-    this.variableLength = 0;
-    this.worstAspectRatio = double.max;
-    this.area = 0;
-  }
-
-  private static double aspectRatio(double size, double sharedLength, double l2) {
-    double l1 = sharedLength * size;
-    return max(l1/l2, l2/l1);
-  }
-
-  public this(Rect rect, Node[] childs, double size) {
-    this(rect, size);
-    this.childs = childs;
-    double sizeOfAllChilds = childs.size();
-    double percentageOfTotalArea = sizeOfAllChilds / size;
-    this.variableLength = max(rect.width, rect.height) * percentageOfTotalArea;
-    double height = min(rect.width, rect.height);
-    this.worstAspectRatio = childs.map!(n => aspectRatio(n.size, height / sizeOfAllChilds, variableLength)).reduce!max;
-  }
-
-  public Row add(Node n) {
-    Node[] tmp = childs ~ n;
-    return Row(rect, childs~n, size);
-  }
-
-  public Rect imprint(ref Rect[Node] treemap) {
-    if (rect.height < rect.width) {
-      return imprintLeft(treemap);
-    } else {
-      return imprintTop(treemap);
-    }
-  }
-
-  private Rect imprintLeft(ref Rect[Node] treemap) {
-    double offset = 0;
-    foreach (Node child; childs) {
-      double percentage = child.size / childs.size();
-      double height = percentage * rect.height;
-      treemap[child] = Rect(rect.x, rect.y+offset, variableLength, height);
-      offset += height;
-    }
-    return Rect(rect.x+variableLength, rect.y, rect.width-variableLength, rect.height);
-  }
-
-  private Rect imprintTop(ref Rect[Node] treemap) {
-    double offset = 0;
-    foreach(Node child; childs) {
-      double percentage = child.size / childs.size();
-      double width = percentage * rect.width;
-      treemap[child] = Rect(rect.x+offset, rect.y+0, width, variableLength);
-      offset += width;
-    }
-    return Rect(rect.x, rect.y+variableLength, rect.width, rect.height-variableLength);
-  }
-}
-
 @("Node.layout")
 unittest {
+  class Node {
+    double size;
+    Node[] childs;
+    this(double size) {
+      this.size = size;
+    }
+    this(Node[] childs) {
+      this.childs = childs;
+      this.size = childs.map!(v => v.size).sum;
+    }
+    override string toString() {
+      return "Node { size: " ~ size.to!string ~ " }";
+    }
+  }
+
   import std.math : approxEqual;
   import std.algorithm : equal;
   import unit_threaded;
@@ -190,8 +215,7 @@ unittest {
 
   auto childs = [ 6, 6, 4, 3, 2, 2, 1 ].map!(v => new Node(v)).array;
   auto n = new Node(childs);
-  TreeMap treemap = TreeMap();
-  auto res = treemap.layout(n, Rect(0, 0, 600, 400));
+  auto res = new TreeMap!(Node)().layout(n, Rect(0, 0, 600, 400));
   void check(int idx, Rect r) {
     shouldEqual2(res[childs[idx]], r);
   }
