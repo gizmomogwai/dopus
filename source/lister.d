@@ -8,154 +8,145 @@ import std.stdio;
 import task;
 import tasks.fileinfotask;
 import tasks.filllistertask;
+import std.experimental.logger;
 
-bool waitForFinished() {
-  while (true) {
-    bool received = receiveTimeout(dur!"msecs"(100), (Task.Finished f) {});
-    if (received) {
-      return true;
-    }
-    writeln("waiting another timeout for the old task to finish");
+class Workers {
+  private bool busy;
+  private Tid current;
+  public void workStarted(Tid w) {
+    current = w;
+    busy = true;
   }
-}
-
-Task waitOrCancel(Tid backgroundTask) {
-  bool finished = false;
-  Task res = null;
-  while (!finished) {
-    writeln("waitOrCancel receiving");
-    receive((Task.Finished f) {
-        writeln("waitOrCancel finished");
-        ownerTid.send(f);
-        finished = true;
-      },
-      (Task.Cancel c) {
-        writeln("sending cancel to backgroundtask");
-        send(backgroundTask, c);
-        finished = waitForFinished();
-      },
-      (Task t) {
-        send(backgroundTask, Task.Cancel());
-        finished = waitForFinished();
-        res = t;
-      });
+  public bool isBusy() {
+    return busy;
   }
-  return res;
-}
-
-class Blub {
-  Tid tid;
-  bool set = false;
-  public bool isSet() {
-    return set;
-  }
-  public void setTid(Tid tid_) {
-    tid = tid_;
-    set = true;
-  }
-  public Tid get() {
-    assert(isSet());
-    return tid;
-  }
-  public void clear() {
-    set = false;
-  }
-}
-
-import std.variant;
-
-void listerWorker() {
-  register("listerWorker", thisTid);
-  writeln("lister is running on ", thisTid);
-  Blub activeTask = new Blub();
-  while (true) {
-    if (activeTask.isSet()) {
-      writeln("running mode");
-      auto t = waitOrCancel(activeTask.get());
-      activeTask.clear();
-      if (t) {
-        activeTask.setTid((cast(shared)t).start());
-      }
-    } else {
-      writeln("idle mode");
-      receive((shared Task t) {
-          writeln("got a new task");
-          activeTask.setTid(t.start());
-        });
+  public void cancel() {
+    if (isBusy()) {
+      current.send(Task.Cancel());
     }
   }
+  public void finish() {
+    busy = false;
+  }
 }
-
+/++
+ + A Lister is a dopus list that shows usually file-like things.
+ + Each lister has associated tasks that may run (even in parallel)
+ + on the lister.
+ + For this to work smoothly, the tasks must follow the following conventions:
+ +  - they are not allowed to block
+ +  - they are started in their on thread with spawnLinked
+ +  - they should check from time to time for Cancel in the mailbox
+ +/
 class Lister {
-
-Tid worker;
   Window window;
   ListWidget fileList;
   StringListAdapter adapter;
   string path;
+
+  Workers workers;
+
   this(string path_) {
     path = path_;
+    workers = new Workers();
     window = Platform.instance.createWindow(to!dstring("Lister: " ~ path), null);
     adapter = new StringListAdapter();
     fileList = new ListWidget("filelist", Orientation.Vertical);
     fileList.adapter = adapter;
-    fileList.itemClick = delegate(Widget src, int itemIndex) {
-      writeln("itemClick: ");
+    fileList.itemClick = (Widget src, int itemIndex) {
+      info("itemClick: ");
       return true;
     };
-    fileList.click = delegate(Widget w) {
-      writeln("click: ");
+    fileList.click = (Widget w) {
+      info("click: ");
       return true;
     };
-    fileList.keyEvent = delegate(Widget w, KeyEvent e) {
-      writeln("keyEvent: ", e.action.to!string, ", ", e.keyCode.to!string, ", ", e.text);
+    fileList.keyEvent = (Widget w, KeyEvent e) {
+      // info("keyEvent: ", e.action.to!string, ", ", e.keyCode.to!string, ", ", e.text);
       auto h = path ~ "/" ~ adapter.items.get((cast(ListWidget)w).selectedItemIndex).to!string;
       if (e.text == "i"d) {
-        send(worker, cast(shared)new FileInfoTask(cast(shared)this, h));
+        fileInfo(h);
       } else if (e.text == "n"d) {
         visit(h);
       } else if (e.text == "c"d) {
-        send(worker, Task.Cancel());
+        workers.cancel();
       } else if (e.keyCode == 8 && e.action == KeyAction.KeyUp) {
-        writeln("parent dir");
         visit(path.dirName);
       }
       return true;
     };
     window.mainWidget = fileList;
     window.show();
-    worker = spawn(&listerWorker);
 
     visit(path);
   }
 
   void visit(string path_) {
     if (path_.isDir) {
+      if (workers.isBusy()) {
+        info("workers busy ... cancelling current job");
+        workers.cancel();
+      }
+
       auto absPath = buildNormalizedPath(absolutePath(path_));
       path = absPath;
-      send(worker, cast(shared)new FillListerTask(cast(shared)this, absPath));
+      auto fillListerClear = (string path) {
+        clear(path);
+      };
+      auto fillListerProgress = (DirEntry entry) {
+        add(entry);
+      };
+      auto fillListerFinished = () {
+        workers.finish();
+      };
+      auto task = spawnLinked(&fillListerTask, absPath,
+                              cast(shared)fillListerClear,
+                              cast(shared)fillListerProgress,
+                              cast(shared)fillListerFinished);
+      workers.workStarted(task);
     } else {
-      writeln("not a directory");
+      info("not a directory");
     }
   }
 
-  void clear(string path) shared {
-    (cast(Window)window).executeInUiThread({
-        (cast(Window)window).windowCaption = path.to!dstring;
-        (cast(ListWidget)fileList).selectedItemIndex = 0;
-        (cast(StringListAdapter)adapter).clear();
+  void fileInfo(string path) {
+    //if (workers.isBusy()) {
+    //workers.cancel();
+    //}
+
+    auto fileInfoClear = delegate(string path) {
+      info("info for '", path, "'");
+    };
+    auto fileInfoProgress = delegate(string msg) {
+      info("Result of fileInfo: ", msg);
+    };
+    auto fileInfoFinished = delegate() {
+      workers.finish();
+    };
+
+    auto task = spawnLinked(&fileInfoTask, path,
+                            cast(shared)fileInfoClear,
+                            cast(shared)fileInfoProgress,
+                            cast(shared)fileInfoFinished);
+    workers.workStarted(task);
+  }
+
+  void clear(string path) {
+    window.executeInUiThread({
+        window.windowCaption = path.to!dstring;
+        fileList.selectedItemIndex = 0;
+        adapter.clear();
       });
   }
 
-
-  void add(DirEntry entry) shared {
-    (cast(Window) window).executeInUiThread({
+  void add(DirEntry entry) {
+    window.executeInUiThread({
         auto s = entry.name.baseName.to!dstring;
         if (entry.isDir) {
           s ~= "/"d;
         }
-        (cast(StringListAdapter)adapter).add(s);
-        (cast(Window)window).invalidate();
+        adapter.add(s);
+        window.invalidate();
       });
   }
 }

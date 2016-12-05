@@ -7,25 +7,65 @@ import std.format;
 import std.file;
 import std.stdio;
 import delay;
+import core.time;
 
-class FileInfo {
-public:
-  const ulong size;
-  const ulong nrOfFiles;
-  this(ulong size_=0, ulong nrOfFiles_=0) {
-    size = size_;
-    nrOfFiles = nrOfFiles_;
+
+void fileInfoTask(string path, shared void delegate(string) clear, shared void delegate(string) progress, shared void delegate() finished) {
+  class Result {
+  public:
+    const ulong size;
+    const ulong nrOfFiles;
+    const bool canceled;
+    public this(ulong size_, ulong nrOfFiles_, bool canceled_) {
+      size = size_;
+      nrOfFiles = nrOfFiles_;
+      canceled = canceled_;
+    }
+    Result cancel() {
+      return new Result(size, nrOfFiles, true);
+    }
+    Result add(ulong size_) {
+      return new Result(size + size_, nrOfFiles + 1, canceled);
+    }
+    override
+    string toString() {
+      return canceled ? "FileInfo got canceled" : "FileInfo { nrOfFiles=%s, size=%s }".format(nrOfFiles, size);
+    }
   }
 
-  FileInfo add(ulong size_) {
-    return new FileInfo(size + size_, nrOfFiles+1);
+  Result collectFileInfo(string path) {
+    auto res = new Result(0, 0, false);
+    if (path.isDir()) {
+      foreach (e; path.dirEntries(SpanMode.depth)) {
+        bool canceled = false;
+        if (e.isFile()) {
+          res = res.add(e.getSize());
+        }
+        receiveTimeout(dur!("msecs")(-1), (Task.Cancel c) {
+            res = res.cancel();
+          });
+        if (res.canceled) {
+          return res;
+        }
+      }
+      return res;
+    } else {
+      return res.add(path.getSize());
+    }
   }
 
-  override string toString() {
-    return "FileInfo { nrOfFiles=%s, size=%s }".format(nrOfFiles, size);
-  }
+  clear(path);
+
+
+
+
+  auto fileInfo = collectFileInfo(path);
+  progress(fileInfo.toString());
+  finished();
 }
 
+
+/*
 class FileInfoTask : Task {
   bool canceled = false;
   this(shared Lister lister, string path) {
@@ -60,3 +100,4 @@ class FileInfoTask : Task {
     return res;
   }
 }
+*/

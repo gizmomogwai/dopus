@@ -3,3 +3,4 @@ dopus
 bin
 *.a
 __*__
+*.lst

@@ -5,7 +5,7 @@ module treemap;
  + rects for the nodes. From the top of my hear there are the
  + following options:
  + 1. force the client to provide a rect member in the used type.
- + 2. return an associative array from Rect[Node].
+ + 2. return an associative array from Rect[Node] -> path taken.
  + 3. return a new type that holds the node, the rect and childs of
  +    the type.
  +/
@@ -17,6 +17,10 @@ import std.algorithm;
 import std.range;
 import std.variant;
 
+/++
+ + Rect struct used to store the positions of the Nodes in the
+ + treemap. The position is always relative to the initial rect.
+ +/
 struct Rect {
   double x;
   double y;
@@ -28,28 +32,33 @@ struct Rect {
     this.width = width;
     this.height = height;
   }
-  double area() {
-    return width * height;
+  double left() {
+    return x;
   }
-  string toString() {
-    return "Rect { " ~ x.to!string ~ ", " ~ y.to!string ~ ", " ~ width.to!string ~ ", " ~ height.to!string ~ ", " ~ area.to!string ~ " }";
+  double right() {
+    return x+width;
   }
-  int left() {
-    return cast(int)x;
+  double top() {
+    return y;
   }
-  int right() {
-    return cast(int)(x+width);
+  double bottom() {
+    return y+height;
   }
-  int top() {
-    return cast(int)y;
+  bool contains(double x, double y) {
+    return x >= this.x && x < right() &&
+      y >= this.y && y < bottom();
   }
-  int bottom() {
-    return cast(int)(y+height);
-  }
-  bool contains(int x, int y) {
-    return x >= this.x && x < this.x+this.width &&
-      y >= this.y && y < this.y+this.height;
-  }
+}
+
+@("Rect.basics")
+unittest {
+  import unit_threaded;
+  auto r = Rect(10, 11, 20, 30);
+  r.contains(15, 15).shouldEqual(true);
+  r.left.shouldEqual(10);
+  r.top.shouldEqual(11);
+  r.right.shouldEqual(30);
+  r.bottom.shouldEqual(41);
 }
 
 template TreeMap(Node) {
@@ -57,16 +66,34 @@ template TreeMap(Node) {
     return nodes.map!(v => v.size).sum;
   }
 
+  /++
+   + A Treemap is a compact two dimensional representation of the
+   + "size" of Nodes to each other.
+   + Each Node has a size that is used to determine how much space is
+   + reserved for this Node when laying the Treemap out on a Rect.
+   +/
   class TreeMap {
     Rect[Node] treeMap;
+    Node rootNode;
+    this(Node root) {
+      this.rootNode = root;
+    }
 
-    TreeMap layout(Node n, Rect rect) {
-      layout(n.childs, n.size, rect);
+    /++
+     + Layouts the treemap for a Rect.
+     +/
+    TreeMap layout(Rect rect) {
+      layout(rootNode.childs, rootNode.size, rect);
       return this;
     }
 
     alias Maybe = Algebraic!(Node, typeof(null));
-    Maybe findFor(int x, int y) {
+    /++
+     + Find the Node for a position.
+     + @return Maybe!Node
+     + @see Unittest on how to use it.
+     +/
+    Maybe findFor(double x, double y) {
       foreach (kv; treeMap.byKeyValue()) {
         auto fileNode = kv.key;
         auto rect = kv.value;
@@ -79,10 +106,14 @@ template TreeMap(Node) {
       return res;
     }
 
+    /++
+     + @param n which rect to return.
+     + @return the Rect of the given Node.
+     +/
     Rect get(Node n) {
       return treeMap[n];
     }
-    
+
     private void layout(Node[] childs, double size, Rect rect) {
       Row row = Row(rect, size);
       Node[] rest = childs;
@@ -111,7 +142,7 @@ template TreeMap(Node) {
      + - second the found Row is imprinted (which means the layout
      +   coordinates are added to the child Nodes).
      +/
-    struct Row {
+    private struct Row {
       /// the total area that the row could take
       Rect rect;
       /// the total size that corresponds to the total area
@@ -163,7 +194,7 @@ template TreeMap(Node) {
 
       private Rect imprintLeft(ref Rect[Node] treemap) {
         double offset = 0;
-        foreach (Node child; childs) {
+        foreach (child; childs) {
           double percentage = child.size / childs.size();
           double height = percentage * rect.height;
           treemap[child] = Rect(rect.x, rect.y+offset, variableLength, height);
@@ -174,7 +205,7 @@ template TreeMap(Node) {
 
       private Rect imprintTop(ref Rect[Node] treemap) {
         double offset = 0;
-        foreach(Node child; childs) {
+        foreach(child; childs) {
           double percentage = child.size / childs.size();
           double width = percentage * rect.width;
           treemap[child] = Rect(rect.x+offset, rect.y+0, width, variableLength);
@@ -185,7 +216,8 @@ template TreeMap(Node) {
     }
   }
 }
-@("Node.layout")
+
+@("Treemap")
 unittest {
   class Node {
     double size;
@@ -196,9 +228,6 @@ unittest {
     this(Node[] childs) {
       this.childs = childs;
       this.size = childs.map!(v => v.size).sum;
-    }
-    override string toString() {
-      return "Node { size: " ~ size.to!string ~ " }";
     }
   }
 
@@ -215,9 +244,9 @@ unittest {
 
   auto childs = [ 6, 6, 4, 3, 2, 2, 1 ].map!(v => new Node(v)).array;
   auto n = new Node(childs);
-  auto res = new TreeMap!(Node)().layout(n, Rect(0, 0, 600, 400));
+  auto res = new TreeMap!(Node)(n).layout(Rect(0, 0, 600, 400));
   void check(int idx, Rect r) {
-    shouldEqual2(res[childs[idx]], r);
+    shouldEqual2(res.get(childs[idx]), r);
   }
   check(0, Rect(0, 0, 300, 200));
   check(1, Rect(0, 200, 300, 200));
@@ -228,4 +257,15 @@ unittest {
   check(4, Rect(300, 233, 120, 166));
   check(5, Rect(420, 233, 120, 166));
   check(6, Rect(540, 233, 60, 166));
+
+  auto found = res.findFor(1, 1);
+  found.tryVisit!(
+    (Node n) {},
+    () {assert(false);}
+  )();
+  auto notFound = res.findFor(-1, -1);
+  notFound.tryVisit!(
+    (typeof(null) n) {},
+    () {assert(false);}
+  )();
 }

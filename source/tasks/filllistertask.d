@@ -6,7 +6,33 @@ import std.format;
 import std.file;
 import std.stdio;
 import delay;
+import std.experimental.logger;
+import core.time;
 
+void fillListerTask(string path,
+                shared void delegate(string) clear,
+                shared void delegate(DirEntry) add,
+                shared void delegate() finished) {
+  clear(path);
+
+  foreach (dirEntry; dirEntries(path, SpanMode.shallow)) {
+    add(dirEntry);
+
+    bool canceled = false;
+    receiveTimeout(dur!"msecs"(50),
+                   (Task.Cancel c) {
+                     canceled = true;
+                     info("canceled");
+                   });
+
+    if (canceled) {
+      break;
+    }
+
+  }
+  finished();
+}
+/*
 class FillListerTask : Task {
   private bool canceled = false;
   this(shared Lister lister, string path) {
@@ -52,3 +78,4 @@ class FillListerTask : Task {
     return res;
   }
 }
+*/
