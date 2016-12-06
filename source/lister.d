@@ -8,6 +8,7 @@ import std.stdio;
 import task;
 import tasks.fileinfotask;
 import tasks.filllistertask;
+import tasks.testarchivetask;
 import std.experimental.logger;
 
 class Workers {
@@ -37,6 +38,8 @@ class Workers {
  +  - they are not allowed to block
  +  - they are started in their on thread with spawnLinked
  +  - they should check from time to time for Cancel in the mailbox
+ +  - to interact with the ui, they should take several delegates,
+ +    that are then responsible to transport the data back to the ui thread if necessary
  +/
 class Lister {
   Window window;
@@ -70,6 +73,8 @@ class Lister {
         visit(h);
       } else if (e.text == "c"d) {
         workers.cancel();
+      } else if (e.text == "t"d) {
+        testArchive(h);
       } else if (e.keyCode == 8 && e.action == KeyAction.KeyUp) {
         visit(path.dirName);
       }
@@ -80,7 +85,25 @@ class Lister {
 
     visit(path);
   }
+  void testArchive(string path) {
+    if (path.isFile) {
+      auto testArchiveClear = delegate(string path) {
+        infof("testing '%s'", path);
+      };
 
+      auto testArchiveProgress = delegate(string msg) {
+        info(msg);
+      };
+      auto testArchiveFinished= delegate() {
+        infof("testing '%s' finished", path);
+      };
+      auto task = spawnLinked(&testArchiveTask, path,
+                              cast(shared)testArchiveClear,
+                              cast(shared)testArchiveProgress,
+                              cast(shared)testArchiveFinished);
+      workers.workStarted(task);
+    }
+  }
   void visit(string path_) {
     if (path_.isDir) {
       if (workers.isBusy()) {

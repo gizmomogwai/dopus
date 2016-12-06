@@ -1,7 +1,8 @@
 module task;
 import std.concurrency;
 
-import lister;
+import core.time;
+
 
 /**
  * ListerTask runs in the background of a lister.
@@ -10,8 +11,31 @@ import lister;
  * - backend - the task specific operation.
  */
 class Task {
-  public static struct Finished {}
   public static struct Cancel {}
+  public static struct Finished {}
+  MonoTime startTime;
+  public this() {
+    startTime = MonoTime.currTime();
+  }
+  bool wasCanceled() {
+    bool c = false;
+    auto current = MonoTime.currTime();
+    if ((current - startTime) > dur!"seconds"(1)) {
+      receiveTimeout(dur!"msecs"(-1),
+                     (Task.Cancel) {
+                       c = true;
+                     });
+      startTime = current;
+    }
+    return c;
+  }
+
+  /*
+  public static auto delay() {
+    static import core.time;
+    return core.time.dur!"msecs"(10);
+  }
+
 
   shared Lister lister;
   string path;
@@ -47,5 +71,5 @@ class Task {
   }
 
   protected abstract void backend() shared;
-
+  */
 }

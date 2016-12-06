@@ -6,9 +6,6 @@ import std.concurrency;
 import std.format;
 import std.file;
 import std.stdio;
-import delay;
-import core.time;
-
 
 void fileInfoTask(string path, shared void delegate(string) clear, shared void delegate(string) progress, shared void delegate() finished) {
   class Result {
@@ -34,6 +31,7 @@ void fileInfoTask(string path, shared void delegate(string) clear, shared void d
   }
 
   Result collectFileInfo(string path) {
+    auto task = new Task();
     auto res = new Result(0, 0, false);
     if (path.isDir()) {
       foreach (e; path.dirEntries(SpanMode.depth)) {
@@ -41,10 +39,8 @@ void fileInfoTask(string path, shared void delegate(string) clear, shared void d
         if (e.isFile()) {
           res = res.add(e.getSize());
         }
-        receiveTimeout(dur!("msecs")(-1), (Task.Cancel c) {
-            res = res.cancel();
-          });
-        if (res.canceled) {
+        if (task.wasCanceled()) {
+          res = res.cancel();
           return res;
         }
       }
@@ -55,10 +51,6 @@ void fileInfoTask(string path, shared void delegate(string) clear, shared void d
   }
 
   clear(path);
-
-
-
-
   auto fileInfo = collectFileInfo(path);
   progress(fileInfo.toString());
   finished();
