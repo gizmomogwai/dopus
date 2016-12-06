@@ -9,6 +9,7 @@ import task;
 import tasks.fileinfotask;
 import tasks.filllistertask;
 import tasks.testarchivetask;
+import tasks.startprocesstask;
 import std.experimental.logger;
 
 class Workers {
@@ -69,7 +70,7 @@ class Lister {
       auto h = path ~ "/" ~ adapter.items.get((cast(ListWidget)w).selectedItemIndex).to!string;
       if (e.text == "i"d) {
         fileInfo(h);
-      } else if (e.text == "n"d) {
+      } else if (e.text == "x"d) {
         visit(h);
       } else if (e.text == "c"d) {
         workers.cancel();
@@ -105,13 +106,13 @@ class Lister {
     }
   }
   void visit(string path_) {
+    auto absPath = buildNormalizedPath(absolutePath(path_));
     if (path_.isDir) {
       if (workers.isBusy()) {
         info("workers busy ... cancelling current job");
         workers.cancel();
       }
 
-      auto absPath = buildNormalizedPath(absolutePath(path_));
       path = absPath;
       auto fillListerClear = (string path) {
         clear(path);
@@ -128,7 +129,21 @@ class Lister {
                               cast(shared)fillListerFinished);
       workers.workStarted(task);
     } else {
-      info("not a directory");
+      auto startProcessClear = delegate(string path) {
+        infof("starting '%s'", path);
+      };
+      auto startProcessProgress = delegate(string msg) {
+        info(msg);
+      };
+      auto startProcessFinished = delegate() {
+        workers.finish();
+        info("startProcess finished");
+      };
+      auto task = spawnLinked(&startProcess, absPath,
+                              cast(shared)startProcessClear,
+                              cast(shared)startProcessProgress,
+                              cast(shared)startProcessFinished);
+      workers.workStarted(task);
     }
   }
 
