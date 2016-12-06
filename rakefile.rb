@@ -10,8 +10,10 @@ end
 
 desc 'clean'
 task :clean do
+  sh "dub clean"
   sh "find . -name '*.lst' -delete"
   sh "find . -name '*~' -delete"
+  sh "rm dopus"
 end
 
 task :default => :test

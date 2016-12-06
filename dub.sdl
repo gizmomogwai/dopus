@@ -6,6 +6,8 @@ license "MIT"
 
 dependency "rainbow" version="0.0.2"
 dependency "dlangui" version="*"
+dependency "treemap:dlangui" version="*"
+dependency "treemap:file" version="*"
 
 configuration "debug" {
   targetType "executable"

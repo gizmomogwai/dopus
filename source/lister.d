@@ -10,7 +10,10 @@ import tasks.fileinfotask;
 import tasks.filllistertask;
 import tasks.testarchivetask;
 import tasks.startprocesstask;
+import tasks.treemaptask;
 import std.experimental.logger;
+import std.conv;
+import std.string;
 
 class Workers {
   private bool busy;
@@ -76,6 +79,8 @@ class Lister {
         workers.cancel();
       } else if (e.text == "t"d) {
         testArchive(h);
+      } else if (e.text == "T"d) {
+        treeView(h);
       } else if (e.keyCode == 8 && e.action == KeyAction.KeyUp) {
         visit(path.dirName);
       }
@@ -85,6 +90,36 @@ class Lister {
     window.show();
 
     visit(path);
+  }
+  void treeView(string path) {
+    if (path.isDir) {
+      auto window = Platform.instance.createWindow("treemap '%s'".format(path).to!dstring, null);
+      auto vl = new VerticalLayout("vl");
+      vl.layoutWidth(FILL_PARENT).layoutHeight(FILL_PARENT);
+
+      auto text = new TextWidget("label", "no selection".to!dstring);
+      text.fontSize(32);
+      auto treeViewClear = delegate(string s) {
+      };
+      auto treeViewProgress = delegate(string s) {
+        text.text = s.to!dstring;
+      };
+      auto treeViewFinished = delegate() {
+        info("finished");
+      };
+      auto treemap = treeMapTask(path,
+                                 cast(shared)treeViewClear,
+                                 cast(shared)treeViewProgress,
+                                 cast(shared)treeViewFinished);
+
+      vl.addChild(treemap);
+      vl.addChild(text);
+      treemap.backgroundColor(0x000000).layoutWidth(FILL_PARENT).layoutHeight(FILL_PARENT).padding(Rect(10, 10, 10, 10));
+
+      window.mainWidget = vl;
+      window.show();
+
+    }
   }
   void testArchive(string path) {
     if (path.isFile) {

@@ -8,6 +8,7 @@
 		"dlangui": "0.9.46",
 		"dsfml": "2.1.1",
 		"rainbow": "0.0.2",
+		"treemap": "0.0.1+commit.19.gfeba560",
 		"unit-threaded": "0.7.0",
 		"x11": "1.0.16"
 	}
