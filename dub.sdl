@@ -5,9 +5,7 @@ authors "gizmo"
 license "MIT"
 
 dependency "rainbow" version="0.0.2"
-dependency "dlangui" version="*"
-dependency "treemap:dlangui" version="*"
-dependency "treemap:file" version="*"
+dependency "gtk-d:gtkd" version="*"
 
 configuration "debug" {
   targetType "executable"

@@ -1,6 +1,8 @@
-module tasks.filllistertask;
-import lister;
-import task;
+module dopus.tasks.filllistertask;
+
+import dopus.lister;
+import dopus.task;
+
 import std.concurrency;
 import std.format;
 import std.file;
@@ -8,22 +10,23 @@ import std.stdio;
 import std.experimental.logger;
 import core.time;
 
-void fillListerTask(string path,
-                shared void delegate(string) clear,
-                shared void delegate(DirEntry) add,
-                shared void delegate() finished) {
-  auto task = new Task();
-  clear(path);
+void fillListerTask(string path, shared void delegate(string) clear,
+        shared void delegate(DirEntry) add, shared void delegate() finished)
+{
+    auto task = new Task();
+    clear(path);
 
-  foreach (dirEntry; dirEntries(path, SpanMode.shallow)) {
-    add(dirEntry);
+    foreach (dirEntry; dirEntries(path, SpanMode.shallow))
+    {
+        add(dirEntry);
 
-    if (task.wasCanceled()) {
-      break;
+        if (task.wasCanceled())
+        {
+            break;
+        }
+
     }
-
-  }
-  finished();
+    finished();
 }
 /*
 class FillListerTask : Task {

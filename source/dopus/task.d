@@ -1,8 +1,7 @@
-module task;
+module dopus.task;
 import std.concurrency;
 
 import core.time;
-
 
 /**
  * ListerTask runs in the background of a lister.
@@ -10,27 +9,35 @@ import core.time;
  * - frontend - handles the communication from and to the lister
  * - backend - the task specific operation.
  */
-class Task {
-  public static struct Cancel {}
-  public static struct Finished {}
-  MonoTime startTime;
-  public this() {
-    startTime = MonoTime.currTime();
-  }
-  bool wasCanceled() {
-    bool c = false;
-    auto current = MonoTime.currTime();
-    if ((current - startTime) > dur!"seconds"(1)) {
-      receiveTimeout(dur!"msecs"(-1),
-                     (Task.Cancel) {
-                       c = true;
-                     });
-      startTime = current;
+class Task
+{
+    public static struct Cancel
+    {
     }
-    return c;
-  }
 
-  /*
+    public static struct Finished
+    {
+    }
+
+    MonoTime startTime;
+    public this()
+    {
+        startTime = MonoTime.currTime();
+    }
+
+    bool wasCanceled()
+    {
+        bool c = false;
+        auto current = MonoTime.currTime();
+        if ((current - startTime) > dur!"seconds"(1))
+        {
+            receiveTimeout(dur!"msecs"(-1), (Task.Cancel) { c = true; });
+            startTime = current;
+        }
+        return c;
+    }
+
+    /*
   public static auto delay() {
     static import core.time;
     return core.time.dur!"msecs"(10);

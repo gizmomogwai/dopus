@@ -17,3 +17,14 @@
 - der receiver empfaengt background tasks
 - startet diese async
 - 
+
+
+
+* GTK resources
+- http://gexperts.com/wp/category/dlang/
+- https://gitlab.com/9898287/gtkdnotes
+- https://gitlab.com/Gert-dev/grestful
+- https://github.com/gnunn1/vgrep
+- https://github.com/gnunn1/tilix
+- https://github.com/gtkd-developers/GtkD
+- https://sites.google.com/site/gtkdtutorial/
