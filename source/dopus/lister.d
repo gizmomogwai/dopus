@@ -7,6 +7,7 @@ import core.time;
 import std.stdio;
 
 import dopus.task;
+import dopus.listers;
 
 //import tasks.fileinfotask;
 import dopus.tasks.filllistertask;
@@ -27,7 +28,7 @@ import gtk.TreeViewColumn;
 import gtk.ListStore;
 import gtk.CellRendererText;
 import gtk.ScrolledWindow;
-import gobject.ObjectG;
+
 import gio.SimpleAction;
 import gio.SimpleActionGroup;
 import gtk.AccelGroup;
@@ -78,6 +79,7 @@ class Workers
  +/
 class Lister : ApplicationWindow
 {
+    Listers listers;
     string path;
 
     Workers workers;
@@ -87,9 +89,10 @@ class Lister : ApplicationWindow
     ListStore store;
     static int count = 0;
 
-    this(Application app, string path_)
+    this(Application app, Listers listers_, string path_)
     {
         super(app);
+        listers = listers_;
         path = path_;
         setTitle(path);
         workers = new Workers();
@@ -108,7 +111,6 @@ class Lister : ApplicationWindow
         column = new TreeViewColumn("name", textCellRenderer, "text", 0);
         view.appendColumn(column);
         store = new ListStore([GType.STRING]);
-        store.setValue(store.createIter(), 0, "initial");
         view.setModel(store);
 
         auto action = new SimpleAction("test", null);
@@ -124,6 +126,7 @@ class Lister : ApplicationWindow
         add(new ScrolledWindow(view));
         visit(path);
         showAll();
+        listers.register(this);
     }
 
     ~this()
@@ -134,6 +137,7 @@ class Lister : ApplicationWindow
     void quitLister(Widget widget)
     {
         writeln("Bye Lister.");
+        listers.unregister(this);
         close();
     }
 

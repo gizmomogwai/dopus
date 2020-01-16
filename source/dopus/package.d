@@ -1,12 +1,16 @@
 module dopus;
 
 import gtk.application;
+
+import dopus.listers;
 import dopus.lister;
+
+
 import std.stdio;
 
 class Dopus : Application
 {
-    Lister[] listers;
+    Listers listers;
     this(string[] args)
     {
         super("com.flopcode.Dopus", ApplicationFlags.HANDLES_COMMAND_LINE);
@@ -20,9 +24,11 @@ class Dopus : Application
             import gtk.Button;
             import gtk.Box;
 
+            listers = new Listers(this);
+
             foreach (dir; args[1 .. $])
             {
-                listers ~= new Lister(this, dir);
+                new Lister(this, listers, dir);
             }
         });
         addOnCommandLine(delegate(Scoped!ApplicationCommandLine acl, GioApplication gioApp) {

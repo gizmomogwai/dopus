@@ -3,22 +3,24 @@
 
 ** Design choices
 - Nothing is ever allowed to block the ui thread.
+- dlangui -> gtkd
 
 ** Thanks
 - Thanks go out to the [[http://dlang.org/][dlang.org]] for an interesting language,
 - to Vladim Lopatin for creating [[https://github.com/buggins/dlangui][dlangui]],
 - and to d's package manager [[http://code.dlang.org/][dub]], which I really enjoy
 
+** My normal operation during the day
+- open another lister
+- open another lister on subdir
+- copy from one lister to another
+- move from one lister to another
+- rename a file
+- open a file
+
 * TODOs
 ** sorted lister view
 ** fix crash when mouse starts in emtpy area of filelister
-
-* jeder lister hat einen receiver
-- der receiver empfaengt background tasks
-- startet diese async
-- 
-
-
 
 * GTK resources
 - http://gexperts.com/wp/category/dlang/
