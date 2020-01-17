@@ -1,6 +1,7 @@
 module gtkd.x.treeselection;
 
-import std.array;
+private import std.array;
+private import gtk.TreeSelection;
 
 extern (C) void treeSelectionSelectedForeach(GtkTreeModel* model,
         GtkTreePath* path, GtkTreeIter* iter, void* data)
@@ -13,7 +14,6 @@ extern (C) void treeSelectionSelectedForeach(GtkTreeModel* model,
     res.put(m.getValueString(new TreeIter(iter), 0));
 }
 
-private import gtk.TreeSelection;
 
 string[] getSelection(TreeSelection selection)
 {

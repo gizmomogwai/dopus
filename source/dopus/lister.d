@@ -5,6 +5,7 @@ import std.file;
 import std.path;
 import core.time;
 import std.stdio;
+import std.string;
 
 import dopus.task;
 import dopus.listers;
@@ -81,17 +82,19 @@ class Lister : ApplicationWindow
 {
     Listers listers;
     string path;
-
+    bool isSource;
+    bool isDestination;
     Workers workers;
 
     TreeView view;
     TreeViewColumn column;
     ListStore store;
     static int count = 0;
-
+    int id;
     this(Application app, Listers listers_, string path_)
     {
         super(app);
+        id = count++;
         listers = listers_;
         path = path_;
         setTitle(path);
@@ -113,20 +116,50 @@ class Lister : ApplicationWindow
         store = new ListStore([GType.STRING]);
         view.setModel(store);
 
-        auto action = new SimpleAction("test", null);
-        action.addOnActivate(delegate(Variant, SimpleAction) {
+        auto newAction = new SimpleAction("new", null);
+        newAction.addOnActivate(delegate(Variant, SimpleAction) {
+            new Lister(app, listers, path);
+        });
+        actions.insert(newAction);
+        app.setAccelsForAction("lister.new", ["<Control>n"]);
+
+        auto newInSubfolderAction = new SimpleAction("newInSubfolder", null);
+        newInSubfolderAction.addOnActivate(delegate(Variant, SimpleAction) {
+            writeln(view.getSelection().getSelection());
+        });
+        actions.insert(newInSubfolderAction);
+        app.setAccelsForAction("lister.newInSubfolder", ["<Control><Shift>n"]);
+
+        auto testAction = new SimpleAction("test", null);
+        testAction.addOnActivate(delegate(Variant, SimpleAction) {
             writeln("test" ~ path_ ~ " " ~ this.to!string);
             auto selection = view.getSelection();
             writeln(selection);
             writeln(selection.getSelection());
         });
-        actions.insert(action);
+        actions.insert(testAction);
         app.setAccelsForAction("lister.test", ["<Control>t"]);
+
 
         add(new ScrolledWindow(view));
         visit(path);
         showAll();
         listers.register(this);
+        addOnSetFocus(delegate(Widget, Window) {
+                writeln("widget focused ", this);
+                writeln("lister: ", this);
+                listers.moveToFront(this);
+            });
+    }
+
+    Lister setSource(bool source) {
+        this.isSource = source;
+        return updateTitle();
+    }
+
+    Lister setDestination(bool destination) {
+        this.isDestination = destination;
+        return updateTitle();
     }
 
     ~this()
@@ -139,6 +172,18 @@ class Lister : ApplicationWindow
         writeln("Bye Lister.");
         listers.unregister(this);
         close();
+    }
+
+    override string toString() {
+        return "%s Lister(path=%s)".format(state, path);
+    }
+
+    string state() {
+        return isSource ? "SRC" : isDestination ? "DST" : "";
+    }
+    Lister updateTitle() {
+        setTitle("%s - %s".format(state, path));
+        return this;
     }
 
     /+

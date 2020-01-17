@@ -23,6 +23,7 @@
 ** fix crash when mouse starts in emtpy area of filelister
 
 * GTK resources
+- https://api.gtkd.org/
 - http://gexperts.com/wp/category/dlang/
 - https://gitlab.com/9898287/gtkdnotes
 - https://gitlab.com/Gert-dev/grestful

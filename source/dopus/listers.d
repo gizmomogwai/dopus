@@ -10,12 +10,14 @@ import gtk.ListStore;
 import gtk.ScrolledWindow;
 import gtk.CellRendererText;
 
-class Listers : ApplicationWindow {
+class Listers : ApplicationWindow
+{
 
     Lister[] listers;
     ListStore store;
 
-    this(Application app) {
+    this(Application app)
+    {
         super(app);
 
         auto list = new TreeView();
@@ -23,18 +25,21 @@ class Listers : ApplicationWindow {
         store = new ListStore([GType.STRING]);
         list.setModel(store);
         add(new ScrolledWindow(list));
-        showAll();
     }
 
-    Listers register(Lister lister) {
+    Listers register(Lister lister)
+    {
         listers ~= lister;
         return updateStore();
     }
 
-    Listers unregister(Lister lister) {
+    Listers unregister(Lister lister)
+    {
         Lister[] newListers;
-        foreach (l; listers) {
-            if (l != lister) {
+        foreach (l; listers)
+        {
+            if (l !is lister)
+            {
                 newListers ~= l;
             }
         }
@@ -42,11 +47,32 @@ class Listers : ApplicationWindow {
         return updateStore();
     }
 
-    private Listers updateStore() {
+    private Listers updateStore()
+    {
+        import std.stdio;
+        writeln("number of listers: ", listers.length);
         store.clear();
-        foreach (lister; listers) {
-            store.setValue(store.createIter(), 0, lister.path);
+        foreach (lister; listers)
+        {
+            store.setValue(store.createIter(), 0, lister.toString);
         }
         return this;
+    }
+    public Listers moveToFront(Lister lister) {
+        Lister[] newListers;
+        newListers ~= lister;
+        foreach (l; listers) {
+            if (l !is lister) {
+                newListers ~= l;
+            }
+        }
+
+        foreach (idx, l; newListers) {
+            l.setSource(idx == 0);
+            l.setDestination(idx == 1);
+        }
+
+        listers = newListers;
+        return updateStore();
     }
 }
