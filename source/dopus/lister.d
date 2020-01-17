@@ -9,6 +9,7 @@ import std.string;
 
 import dopus.task;
 import dopus.listers;
+import dopus.navigationstack;
 
 //import tasks.fileinfotask;
 import dopus.tasks.filllistertask;
@@ -91,12 +92,11 @@ class Lister : ApplicationWindow
     TreeViewColumn column;
     ListStore store;
     static int count = 0;
-    int id;
-    string[] history;
+    NavigationStack navigationStack;
     this(Application app, Listers listers_, string path_)
     {
         super(app);
-        id = count++;
+        navigationStack = new NavigationStack;
         listers = listers_;
         workers = new Workers();
 
@@ -119,7 +119,9 @@ class Lister : ApplicationWindow
         addNewAction(app, listers, actions);
         addExecuteAction(app, listers, actions);
         addParentAction(app, listers, actions);
-        addShowHistoryAction(app, listers, actions);
+        addBackAction(app, listers, actions);
+        addForwardAction(app, listers, actions);
+        addShowNavigationStackAction(app, listers, actions);
 
         auto newInSubfolderAction = new SimpleAction("newInSubfolder", null);
         newInSubfolderAction.addOnActivate(delegate(Variant, SimpleAction) {
@@ -128,7 +130,6 @@ class Lister : ApplicationWindow
             foreach (file; view.getSelection.getSelection)
             {
                 auto newPath = buildNormalizedPath("%s/%s".format(path, file));
-                writeln(1);
                 if (newPath.isDir)
                 {
                     new Lister(app, listers, newPath);
@@ -143,8 +144,6 @@ class Lister : ApplicationWindow
         showAll();
         listers.register(this);
         addOnSetFocus(delegate(Widget, Window) {
-            writeln("widget focused ", this);
-            writeln("lister: ", this);
             listers.moveToFront(this);
         });
     }
@@ -178,7 +177,6 @@ class Lister : ApplicationWindow
                     file = file[0 .. $ - 1];
                 }
                 file = calculatePath(path, file);
-                writeln(2);
                 if (file.isDir)
                 {
                     visit(file);
@@ -205,18 +203,41 @@ class Lister : ApplicationWindow
         app.setAccelsForAction("lister.parent", ["<Control>p"]);
     }
 
-    private void addShowHistoryAction(Application app, Listers listers, SimpleActionGroup actions)
+    private void addShowNavigationStackAction(Application app, Listers listers,
+            SimpleActionGroup actions)
     {
-        auto action = new SimpleAction("history", null);
+        auto action = new SimpleAction("showNavigationStack", null);
         action.addOnActivate(delegate(Variant, SimpleAction) {
-            foreach (idx, entry; history)
+            writeln(navigationStack);
+        });
+        actions.insert(action);
+        app.setAccelsForAction("lister.showNavigationStack", ["<Alt>n"]);
+    }
+
+    private void addBackAction(Application app, Listers listers, SimpleActionGroup actions)
+    {
+        auto action = new SimpleAction("back", null);
+        action.addOnActivate(delegate(Variant, SimpleAction) {
+            if (navigationStack.back)
             {
-                writeln(idx, ": ", entry);
+                visit(navigationStack.path, false);
             }
         });
         actions.insert(action);
-        app.setAccelsForAction("lister.history", ["<Control>h"]);
+        app.setAccelsForAction("lister.back", ["<Alt>b"]);
+    }
 
+    private void addForwardAction(Application app, Listers listers, SimpleActionGroup actions)
+    {
+        auto action = new SimpleAction("forward", null);
+        action.addOnActivate(delegate(Variant, SimpleAction) {
+            if (navigationStack.forward)
+            {
+                visit(navigationStack.path, false);
+            }
+        });
+        actions.insert(action);
+        app.setAccelsForAction("lister.forward", ["<Alt>f"]);
     }
 
     Lister setSource(bool source)
@@ -253,10 +274,13 @@ class Lister : ApplicationWindow
         return isSource ? "SRC" : isDestination ? "DST" : "";
     }
 
-    Lister setPath(string path_)
+    Lister setPath(string path_, bool putToNavigationStack)
     {
         path = path_;
-        history ~= path;
+        if (putToNavigationStack)
+        {
+            navigationStack.visit(path_);
+        }
         return updateTitle();
     }
 
@@ -360,21 +384,16 @@ class Lister : ApplicationWindow
     }
   }
 +/
-    void visit(string path_)
+    void visit(string path_, bool putToNavigationStack = true)
     {
-        writeln("visiting ", path_);
         /+
-      writeln("1");
       Cancellable cancellable = new Cancellable;
-      writeln("2");
       Task t = new Task(this, cancellable, &visitCallback, cast(void*)this);
-      writeln("3");
       t.runInThread(&visitThread);
 +/
-        writeln(3);
         if (path_.isDir)
         {
-            setPath(path_);
+            setPath(path_, putToNavigationStack);
             if (workers.isBusy())
             {
                 info("workers busy ... cancelling current job");
@@ -454,12 +473,10 @@ class Lister : ApplicationWindow
     void addEntry(DirEntry entry)
     {
         auto s = entry.name.baseName;
-        writeln(4);
         if (entry.isDir)
         {
             s ~= "/";
         }
-        writeln("adding ", s);
         store.setValue(store.createIter(), 0, s);
     }
 }

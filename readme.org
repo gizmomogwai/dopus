@@ -19,10 +19,13 @@
     CLOSED: [2020-01-17 Fri 22:40]
     - CLOSING NOTE [2020-01-17 Fri 22:40]
 *** IN-PROGRESS navigate and open files
-- copy from one lister to another
-- move from one lister to another
-- rename a file
-- open a file
+*** TODO open terminal here
+*** TOOD copy from one lister to another
+*** TODO move from one lister to another
+*** TODO enter command in prompt
+*** rename a file
+*** open a file
+*** 
 
 * TODOs
 ** sorted lister view
