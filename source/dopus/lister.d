@@ -16,7 +16,7 @@ import dopus.navigationstack;
 import dopus.tasks.filllistertask;
 
 //import tasks.testarchivetask;
-//import tasks.startprocesstask;
+import dopus.tasks.startprocesstask;
 import std.experimental.logger;
 import std.conv;
 import std.string;
@@ -440,19 +440,30 @@ class Lister : ApplicationWindow
         }
         else
         {
-            auto startProcessClear = delegate(string path) {
-                infof("starting '%s'", path);
+            version (OSX)
+            {
+                auto openCommand = "open";
+            }
+            else
+            {
+                auto openCommand = "xdg-open";
+            }
+
+            auto command = [openCommand, path_];
+            auto start = delegate() {
+                infof("spawning process '%s'", command);
             };
-            auto startProcessProgress = delegate(string msg) { info(msg); };
-            auto startProcessFinished = delegate() {
+            auto progress = delegate(string msg) { info(msg); };
+            auto finished = delegate() {
                 workers.finish();
-                info("startProcess finished");
+                infof("process '%s' finished", command);
             };
-            //      auto task = spawnLinked(&startProcess, absPath,
-            //                            cast(shared)startProcessClear,
-            //                              cast(shared)startProcessProgress,
-            //                              cast(shared)startProcessFinished);
-            //      workers.workStarted(task);
+
+            auto task = spawnLinked(&startProcess, cast(shared)command,
+                        cast(shared)start,
+                        cast(shared)progress,
+                        cast(shared)finished);
+            workers.workStarted(task);
         }
     }
     /+

@@ -6,21 +6,15 @@ import dopus.task;
 import std.process;
 import std.string;
 
-void startProcess(string path, shared void delegate(string) clear,
-        shared void delegate(string) progress, shared void delegate() finished)
+void startProcess(shared(string[]) command,
+                  shared void delegate() start,
+                  shared void delegate(string) progress,
+                  shared void delegate() finished)
 {
-    clear(path);
+    start();
     auto task = new Task();
 
-    version (OSX)
-    {
-        auto openCommand = "open";
-    }
-    else
-    {
-        auto openCommand = "xdg-open";
-    }
-    auto pid = spawnProcess([openCommand, path]);
+    auto pid = spawnProcess(cast(string[])command);
     auto res = pid.tryWait();
     while (res.terminated == false)
     {
@@ -33,6 +27,6 @@ void startProcess(string path, shared void delegate(string) clear,
         Thread.sleep(dur!"seconds"(1));
         res = pid.tryWait();
     }
-    progress("running '%s' finished with status '%d'".format(path, res.status));
+    progress("running '%s' finished with status '%d'".format(command, res.status));
     finished();
 }
