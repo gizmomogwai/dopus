@@ -2,6 +2,7 @@ module dopus.lister;
 
 import std.concurrency;
 import std.file;
+import std.process;
 import std.path;
 import core.time;
 import std.stdio;
@@ -83,20 +84,23 @@ class Workers
 class Lister : ApplicationWindow
 {
     Listers listers;
-    string path;
+
+    NavigationStack navigationStack;
+
     bool isSource;
     bool isDestination;
-    Workers workers;
 
     TreeView view;
     TreeViewColumn column;
     ListStore store;
-    static int count = 0;
-    NavigationStack navigationStack;
-    this(Application app, Listers listers_, string path_)
+
+    Workers workers;
+
+    this(Application app, Listers listers_, string path_,
+            NavigationStack navigationStack_ = new NavigationStack)
     {
         super(app);
-        navigationStack = new NavigationStack;
+        navigationStack = navigationStack_;
         listers = listers_;
         workers = new Workers();
 
@@ -115,50 +119,68 @@ class Lister : ApplicationWindow
         view.appendColumn(column);
         store = new ListStore([GType.STRING]);
         view.setModel(store);
+        add(new ScrolledWindow(view));
+        visit(calculatePath(path_, "."));
+        showAll();
+        listers.register(this);
+        addOnSetFocus(delegate(Widget, Window) { listers.moveToFront(this); });
+        registerActions(app, listers, actions);
+    }
 
-        addNewAction(app, listers, actions);
+    private void registerActions(Application app, Listers listers, SimpleActionGroup actions)
+    {
+        addNewListerAction(app, listers, actions);
+        addNewListersInSubfolders(app, listers, actions);
         addExecuteAction(app, listers, actions);
         addParentAction(app, listers, actions);
         addBackAction(app, listers, actions);
         addForwardAction(app, listers, actions);
         addShowNavigationStackAction(app, listers, actions);
+        addOpenTerminalHere(app, listers, actions);
+    }
 
-        auto newInSubfolderAction = new SimpleAction("newInSubfolder", null);
-        newInSubfolderAction.addOnActivate(delegate(Variant, SimpleAction) {
+    private void addOpenTerminalHere(Application app, Listers listers, SimpleActionGroup actions)
+    {
+        auto action = new SimpleAction("openTerminalHere", null);
+
+        action.addOnActivate(delegate(Variant, SimpleAction) {
+            auto pid = spawnProcess(["open", "-a", "terminal", navigationStack.path]);
+        });
+        actions.insert(action);
+        app.setAccelsForAction("lister.openTerminalHere", ["<Control>t"]);
+    }
+
+    private void addNewListersInSubfolders(Application app, Listers listers,
+            SimpleActionGroup actions)
+    {
+        auto action = new SimpleAction("newInSubfolders", null);
+        action.addOnActivate(delegate(Variant, SimpleAction) {
             import std.file;
 
             foreach (file; view.getSelection.getSelection)
             {
-                auto newPath = buildNormalizedPath("%s/%s".format(path, file));
+                auto newPath = buildNormalizedPath("%s/%s".format(navigationStack.path, file));
                 if (newPath.isDir)
                 {
-                    new Lister(app, listers, newPath);
+                    new Lister(app, listers, newPath, new NavigationStack(navigationStack).pop);
                 }
             }
         });
-        actions.insert(newInSubfolderAction);
-        app.setAccelsForAction("lister.newInSubfolder", ["<Control><Shift>n"]);
-
-        add(new ScrolledWindow(view));
-        visit(calculatePath(path_, "."));
-        showAll();
-        listers.register(this);
-        addOnSetFocus(delegate(Widget, Window) {
-            listers.moveToFront(this);
-        });
+        actions.insert(action);
+        app.setAccelsForAction("lister.newInSubfolders", ["<Control><Shift>n"]);
     }
 
-    private void addNewAction(Application app, Listers listers, SimpleActionGroup actions)
+    private void addNewListerAction(Application app, Listers listers, SimpleActionGroup actions)
     {
-        auto newAction = new SimpleAction("new", null);
-        newAction.addOnActivate(delegate(Variant, SimpleAction) {
-            new Lister(app, listers, path);
+        auto action = new SimpleAction("new", null);
+        action.addOnActivate(delegate(Variant, SimpleAction) {
+            new Lister(app, listers, navigationStack.path, new NavigationStack(navigationStack).pop);
         });
-        actions.insert(newAction);
+        actions.insert(action);
         app.setAccelsForAction("lister.new", ["<Control>n"]);
     }
 
-    private string calculatePath(string path, string file)
+    private static string calculatePath(string path, string file)
     {
         return "%s/%s".format(path, file).absolutePath.buildNormalizedPath;
 
@@ -176,7 +198,7 @@ class Lister : ApplicationWindow
                 {
                     file = file[0 .. $ - 1];
                 }
-                file = calculatePath(path, file);
+                file = calculatePath(navigationStack.path, file);
                 if (file.isDir)
                 {
                     visit(file);
@@ -196,7 +218,7 @@ class Lister : ApplicationWindow
     {
         auto action = new SimpleAction("parent", null);
         action.addOnActivate(delegate(Variant, SimpleAction) {
-            auto file = calculatePath(path, "..");
+            auto file = calculatePath(navigationStack.path, "..");
             visit(file);
         });
         actions.insert(action);
@@ -266,17 +288,16 @@ class Lister : ApplicationWindow
 
     override string toString()
     {
-        return "%s Lister(path=%s)".format(state, path);
+        return "%s Lister(path=%s)".format(state, navigationStack.path);
     }
 
     string state()
     {
-        return isSource ? "SRC" : isDestination ? "DST" : "";
+        return isSource ? "SRC" : isDestination ? "DST" : "   ";
     }
 
     Lister setPath(string path_, bool putToNavigationStack)
     {
-        path = path_;
         if (putToNavigationStack)
         {
             navigationStack.visit(path_);
@@ -286,7 +307,7 @@ class Lister : ApplicationWindow
 
     Lister updateTitle()
     {
-        setTitle("%s - %s".format(state, path));
+        setTitle("%s - %s".format(state, navigationStack.path));
         return this;
     }
 
@@ -413,7 +434,7 @@ class Lister : ApplicationWindow
                 workers.finish();
                 //        window.invalidate();
             };
-            auto task = spawnLinked(&fillListerTask, path, cast(shared) fillListerClear,
+            auto task = spawnLinked(&fillListerTask, navigationStack.path, cast(shared) fillListerClear,
                     cast(shared) fillListerProgress, cast(shared) fillListerFinished);
             //      workers.workStarted(task);
         }

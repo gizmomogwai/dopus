@@ -15,6 +15,16 @@ class NavigationStack
     string[] history;
     int idx = -1;
 
+    this()
+    {
+    }
+
+    this(NavigationStack other)
+    {
+        idx = other.idx;
+        history = other.history.dup;
+    }
+
     NavigationStack visit(string path)
     {
         string[] newHistory;
@@ -43,6 +53,16 @@ class NavigationStack
             return true;
         }
         return false;
+    }
+
+    NavigationStack pop()
+    {
+        if (idx > 0)
+        {
+            --idx;
+            history = history[0 .. $ - 1];
+        }
+        return this;
     }
 
     bool forward()
@@ -113,4 +133,7 @@ unittest
     assert(ns.path == "1");
     assert(ns.forward);
     assert(ns.path == "3");
+    ns.pop;
+    assert(ns.path == "1");
+    assert(!ns.forward);
 }
