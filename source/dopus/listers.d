@@ -30,7 +30,7 @@ class Listers : ApplicationWindow
     Listers register(Lister lister)
     {
         listers ~= lister;
-        return updateStore();
+        return update(listers);
     }
 
     Listers unregister(Lister lister)
@@ -43,14 +43,13 @@ class Listers : ApplicationWindow
                 newListers ~= l;
             }
         }
-        listers = newListers;
-        return updateStore();
+        return update(newListers);
     }
 
-    private Listers updateStore()
+    private Listers update(Lister[] newListers)
     {
-        import std.stdio;
-        writeln("number of listers: ", listers.length);
+        listers = newListers;
+        mark();
         store.clear();
         foreach (lister; listers)
         {
@@ -58,21 +57,28 @@ class Listers : ApplicationWindow
         }
         return this;
     }
-    public Listers moveToFront(Lister lister) {
+
+    public Listers moveToFront(Lister lister)
+    {
         Lister[] newListers;
         newListers ~= lister;
-        foreach (l; listers) {
-            if (l !is lister) {
+        foreach (l; listers)
+        {
+            if (l !is lister)
+            {
                 newListers ~= l;
             }
         }
+        return update(newListers);
+    }
 
-        foreach (idx, l; newListers) {
+    private Listers mark()
+    {
+        foreach (idx, l; listers)
+        {
             l.setSource(idx == 0);
             l.setDestination(idx == 1);
         }
-
-        listers = newListers;
-        return updateStore();
+        return this;
     }
 }

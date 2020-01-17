@@ -67,6 +67,7 @@ class Workers
         busy = false;
     }
 }
+
 /++
  + A Lister is a dopus list that shows usually file-like things.
  + Each lister has associated tasks that may run (even in parallel)
@@ -91,13 +92,12 @@ class Lister : ApplicationWindow
     ListStore store;
     static int count = 0;
     int id;
+    string[] history;
     this(Application app, Listers listers_, string path_)
     {
         super(app);
         id = count++;
         listers = listers_;
-        path = path_;
-        setTitle(path);
         workers = new Workers();
 
         auto accelGroup = new AccelGroup();
@@ -116,48 +116,117 @@ class Lister : ApplicationWindow
         store = new ListStore([GType.STRING]);
         view.setModel(store);
 
+        addNewAction(app, listers, actions);
+        addExecuteAction(app, listers, actions);
+        addParentAction(app, listers, actions);
+        addShowHistoryAction(app, listers, actions);
+
+        auto newInSubfolderAction = new SimpleAction("newInSubfolder", null);
+        newInSubfolderAction.addOnActivate(delegate(Variant, SimpleAction) {
+            import std.file;
+
+            foreach (file; view.getSelection.getSelection)
+            {
+                auto newPath = buildNormalizedPath("%s/%s".format(path, file));
+                writeln(1);
+                if (newPath.isDir)
+                {
+                    new Lister(app, listers, newPath);
+                }
+            }
+        });
+        actions.insert(newInSubfolderAction);
+        app.setAccelsForAction("lister.newInSubfolder", ["<Control><Shift>n"]);
+
+        add(new ScrolledWindow(view));
+        visit(calculatePath(path_, "."));
+        showAll();
+        listers.register(this);
+        addOnSetFocus(delegate(Widget, Window) {
+            writeln("widget focused ", this);
+            writeln("lister: ", this);
+            listers.moveToFront(this);
+        });
+    }
+
+    private void addNewAction(Application app, Listers listers, SimpleActionGroup actions)
+    {
         auto newAction = new SimpleAction("new", null);
         newAction.addOnActivate(delegate(Variant, SimpleAction) {
             new Lister(app, listers, path);
         });
         actions.insert(newAction);
         app.setAccelsForAction("lister.new", ["<Control>n"]);
-
-        auto newInSubfolderAction = new SimpleAction("newInSubfolder", null);
-        newInSubfolderAction.addOnActivate(delegate(Variant, SimpleAction) {
-            writeln(view.getSelection().getSelection());
-        });
-        actions.insert(newInSubfolderAction);
-        app.setAccelsForAction("lister.newInSubfolder", ["<Control><Shift>n"]);
-
-        auto testAction = new SimpleAction("test", null);
-        testAction.addOnActivate(delegate(Variant, SimpleAction) {
-            writeln("test" ~ path_ ~ " " ~ this.to!string);
-            auto selection = view.getSelection();
-            writeln(selection);
-            writeln(selection.getSelection());
-        });
-        actions.insert(testAction);
-        app.setAccelsForAction("lister.test", ["<Control>t"]);
-
-
-        add(new ScrolledWindow(view));
-        visit(path);
-        showAll();
-        listers.register(this);
-        addOnSetFocus(delegate(Widget, Window) {
-                writeln("widget focused ", this);
-                writeln("lister: ", this);
-                listers.moveToFront(this);
-            });
     }
 
-    Lister setSource(bool source) {
+    private string calculatePath(string path, string file)
+    {
+        return "%s/%s".format(path, file).absolutePath.buildNormalizedPath;
+
+    }
+
+    private void addExecuteAction(Application app, Listers listers, SimpleActionGroup actions)
+    {
+        auto action = new SimpleAction("execute", null);
+        action.addOnActivate(delegate(Variant, SimpleAction) {
+            foreach (file; view.getSelection.getSelection)
+            {
+                import std.algorithm.searching;
+
+                if (file.endsWith("/"))
+                {
+                    file = file[0 .. $ - 1];
+                }
+                file = calculatePath(path, file);
+                writeln(2);
+                if (file.isDir)
+                {
+                    visit(file);
+                    break;
+                }
+                else
+                {
+                    visit(file);
+                }
+            }
+        });
+        actions.insert(action);
+        app.setAccelsForAction("lister.execute", ["Return"]);
+    }
+
+    private void addParentAction(Application app, Listers listers, SimpleActionGroup actions)
+    {
+        auto action = new SimpleAction("parent", null);
+        action.addOnActivate(delegate(Variant, SimpleAction) {
+            auto file = calculatePath(path, "..");
+            visit(file);
+        });
+        actions.insert(action);
+        app.setAccelsForAction("lister.parent", ["<Control>p"]);
+    }
+
+    private void addShowHistoryAction(Application app, Listers listers, SimpleActionGroup actions)
+    {
+        auto action = new SimpleAction("history", null);
+        action.addOnActivate(delegate(Variant, SimpleAction) {
+            foreach (idx, entry; history)
+            {
+                writeln(idx, ": ", entry);
+            }
+        });
+        actions.insert(action);
+        app.setAccelsForAction("lister.history", ["<Control>h"]);
+
+    }
+
+    Lister setSource(bool source)
+    {
         this.isSource = source;
         return updateTitle();
     }
 
-    Lister setDestination(bool destination) {
+    Lister setDestination(bool destination)
+    {
         this.isDestination = destination;
         return updateTitle();
     }
@@ -174,14 +243,25 @@ class Lister : ApplicationWindow
         close();
     }
 
-    override string toString() {
+    override string toString()
+    {
         return "%s Lister(path=%s)".format(state, path);
     }
 
-    string state() {
+    string state()
+    {
         return isSource ? "SRC" : isDestination ? "DST" : "";
     }
-    Lister updateTitle() {
+
+    Lister setPath(string path_)
+    {
+        path = path_;
+        history ~= path;
+        return updateTitle();
+    }
+
+    Lister updateTitle()
+    {
         setTitle("%s - %s".format(state, path));
         return this;
     }
@@ -214,7 +294,7 @@ class Lister : ApplicationWindow
           testArchive(h);
           break;
       case "x"d:
-          visit(h);
+          h(visitg);
           break;
       default:
           break;
@@ -282,26 +362,28 @@ class Lister : ApplicationWindow
 +/
     void visit(string path_)
     {
+        writeln("visiting ", path_);
         /+
       writeln("1");
       Cancellable cancellable = new Cancellable;
       writeln("2");
       Task t = new Task(this, cancellable, &visitCallback, cast(void*)this);
       writeln("3");
-      
       t.runInThread(&visitThread);
 +/
-        auto absPath = buildNormalizedPath(absolutePath(path_));
+        writeln(3);
         if (path_.isDir)
         {
+            setPath(path_);
             if (workers.isBusy())
             {
                 info("workers busy ... cancelling current job");
                 workers.cancel();
             }
 
-            path = absPath;
-            auto fillListerClear = (string path) { clear(path); };
+            auto fillListerClear = (string path) {
+                threadsAddIdleDelegate(delegate() { store.clear(); return false; });
+            };
             auto fillListerProgress = (DirEntry entry) {
                 threadsAddIdleDelegate(delegate() {
                     addEntry(entry);
@@ -312,7 +394,7 @@ class Lister : ApplicationWindow
                 workers.finish();
                 //        window.invalidate();
             };
-            auto task = spawnLinked(&fillListerTask, absPath, cast(shared) fillListerClear,
+            auto task = spawnLinked(&fillListerTask, path, cast(shared) fillListerClear,
                     cast(shared) fillListerProgress, cast(shared) fillListerFinished);
             //      workers.workStarted(task);
         }
@@ -372,6 +454,7 @@ class Lister : ApplicationWindow
     void addEntry(DirEntry entry)
     {
         auto s = entry.name.baseName;
+        writeln(4);
         if (entry.isDir)
         {
             s ~= "/";

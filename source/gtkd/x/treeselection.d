@@ -14,7 +14,6 @@ extern (C) void treeSelectionSelectedForeach(GtkTreeModel* model,
     res.put(m.getValueString(new TreeIter(iter), 0));
 }
 
-
 string[] getSelection(TreeSelection selection)
 {
     auto res = appender!(string[]);

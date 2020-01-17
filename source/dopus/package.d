@@ -7,15 +7,18 @@ import dopus.lister;
 import gtk.Window;
 import std.stdio;
 
-class Layout {
+class Layout
+{
     int x;
-    Layout layout(Window w) {
+    Layout layout(Window w)
+    {
         w.resize(300, 300);
         w.move(x, 0);
         x += 300;
         return this;
     }
 }
+
 class Dopus : Application
 {
     Listers listers;
@@ -27,7 +30,6 @@ class Dopus : Application
         import gio.ApplicationCommandLine;
 
         addOnActivate(delegate(GioApplication gioApp) {
-            writeln("onactivate");
             import gtk.MainWindow;
             import gtk.Button;
             import gtk.Box;
@@ -41,7 +43,6 @@ class Dopus : Application
             listers.showAll();
         });
         addOnCommandLine(delegate(Scoped!ApplicationCommandLine acl, GioApplication gioApp) {
-            writeln("on Commandline");
             activate();
             return 0;
         });
