@@ -1,25 +1,30 @@
 module dopus.lister.actions;
 
-import dopus.lister;
-import dopus.listers;
-import gio.SimpleAction;
-import gio.SimpleActionGroup;
-import gtk.Application;
+public import dopus.lister;
+public import dopus.navigationstack;
+public import gio.SimpleAction;
+public import gio.SimpleActionGroup;
+public import gtk.Application;
+
+SimpleAction factory(T)(Lister lister)
+{
+    return new T(lister);
+}
 
 class ListerActions
 {
-    static SimpleAction function(Application app, Lister lister)[] factories;
+    static SimpleAction function(Lister lister)[] factories;
     public static void register(T)(T factory)
     {
         factories ~= factory;
     }
 
-    public static void registerActions(Application app, Lister lister, SimpleActionGroup actions)
+    public static void registerActions(Lister lister)
     {
         foreach (factory; factories)
         {
-            auto action = factory(app, lister);
-            actions.insert(action);
+            auto action = factory(lister);
+            lister.actions.insert(action);
         }
     }
 }

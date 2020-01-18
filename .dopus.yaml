@@ -1,2 +1,17 @@
 ---
-lister.new: <Control>n
+lister.new:
+    - <Control>n
+lister.newInSubfolders:
+    - <Control><Shift>n
+lister.execute:
+    - Return
+lister.parent:
+    - <Control>p
+lister.back:
+    - <Alt>b
+lister.forward:
+    - <Alt>f
+lister.openTerminalHere:
+    - <Control>t
+lister.showNavigationStack:
+    - <Alt>n
