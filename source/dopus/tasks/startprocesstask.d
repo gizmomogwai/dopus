@@ -6,15 +6,13 @@ import dopus.task;
 import std.process;
 import std.string;
 
-void startProcess(shared(string[]) command,
-                  shared void delegate() start,
-                  shared void delegate(string) progress,
-                  shared void delegate() finished)
+void startProcess(shared(string[]) command, shared void delegate() start,
+        shared void delegate(string) progress, shared void delegate() finished)
 {
     start();
     auto task = new Task();
 
-    auto pid = spawnProcess(cast(string[])command);
+    auto pid = spawnProcess(cast(string[]) command);
     auto res = pid.tryWait();
     while (res.terminated == false)
     {

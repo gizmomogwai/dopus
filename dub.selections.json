@@ -7,8 +7,10 @@
 		"derelict-util": "3.0.0-beta.2",
 		"dlangui": "0.9.182",
 		"dsfml": "2.1.1",
+		"dyaml": "0.8.0",
 		"gtk-d": "3.9.0",
 		"rainbow": "0.0.2",
+		"tinyendian": "0.2.0",
 		"treemap": "~master",
 		"unit-threaded": "0.10.6",
 		"x11": "1.0.21"

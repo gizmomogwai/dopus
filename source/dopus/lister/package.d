@@ -1,45 +1,39 @@
 module dopus.lister;
 
-import std.concurrency;
-import std.file;
-import std.process;
-import std.path;
-import core.time;
-import std.stdio;
-import std.string;
-
-import dopus.task;
-import dopus.listers;
-import dopus.navigationstack;
+import dopus.lister.actions;
 
 //import tasks.fileinfotask;
-import dopus.tasks.filllistertask;
-
 //import tasks.testarchivetask;
+import core.time;
+import dopus.listers;
+import dopus.navigationstack;
+import dopus.task;
+import dopus.tasks.filllistertask;
 import dopus.tasks.startprocesstask;
-import std.experimental.logger;
-import std.conv;
-import std.string;
-
-import gtk.MainWindow;
-import gtk.Widget;
-
-import gtk.Button;
-import gtk.Box;
-import gtk.TreeView;
-import gtk.TreeViewColumn;
-import gtk.ListStore;
-import gtk.CellRendererText;
-import gtk.ScrolledWindow;
-
 import gio.SimpleAction;
 import gio.SimpleActionGroup;
 import gtk.AccelGroup;
-import gtk.ApplicationWindow;
 import gtk.Application;
-
+import gtk.ApplicationWindow;
+import gtk.Box;
+import gtk.Button;
+import gtk.CellRendererText;
+import gtk.ListStore;
+import gtk.MainWindow;
+import gtk.ScrolledWindow;
+import gtk.TreeView;
+import gtk.TreeViewColumn;
+import gtk.Widget;
 import gtkd.x.threads;
 import gtkd.x.treeselection;
+import std.concurrency;
+import std.conv;
+import std.experimental.logger;
+import std.file;
+import std.path;
+import std.process;
+import std.stdio;
+import std.string;
 
 class Workers
 {
@@ -69,6 +63,8 @@ class Workers
         busy = false;
     }
 }
+
+import dopus.navigationstack;
 
 /++
  + A Lister is a dopus list that shows usually file-like things.
@@ -124,11 +120,26 @@ class Lister : ApplicationWindow
         showAll();
         listers.register(this);
         addOnSetFocus(delegate(Widget, Window) { listers.moveToFront(this); });
-        registerActions(app, listers, actions);
+
+        ListerActions.registerActions(app, this, actions);
+
+        wireShortcuts(app);
+    }
+
+    private void wireShortcuts(Application app)
+    {
+        import dyaml;
+
+        auto config = Loader.fromFile(".dopus.yaml").load();
+        foreach (ref Node key, ref Node value; config)
+        {
+            app.setAccelsForAction(key.as!string, [value.as!string]);
+        }
     }
 
     private void registerActions(Application app, Listers listers, SimpleActionGroup actions)
     {
+        /*
         addNewListerAction(app, listers, actions);
         addNewListersInSubfolders(app, listers, actions);
         addExecuteAction(app, listers, actions);
@@ -137,6 +148,7 @@ class Lister : ApplicationWindow
         addForwardAction(app, listers, actions);
         addShowNavigationStackAction(app, listers, actions);
         addOpenTerminalHere(app, listers, actions);
+*/
     }
 
     private void addOpenTerminalHere(Application app, Listers listers, SimpleActionGroup actions)
@@ -144,7 +156,9 @@ class Lister : ApplicationWindow
         auto action = new SimpleAction("openTerminalHere", null);
 
         action.addOnActivate(delegate(Variant, SimpleAction) {
-            auto pid = spawnProcess(["open", "-a", "terminal", navigationStack.path]);
+            auto pid = spawnProcess([
+                    "open", "-a", "terminal", navigationStack.path
+                ]);
         });
         actions.insert(action);
         app.setAccelsForAction("lister.openTerminalHere", ["<Control>t"]);
@@ -174,7 +188,8 @@ class Lister : ApplicationWindow
     {
         auto action = new SimpleAction("new", null);
         action.addOnActivate(delegate(Variant, SimpleAction) {
-            new Lister(app, listers, navigationStack.path, new NavigationStack(navigationStack).pop);
+            new Lister(app, listers, navigationStack.path,
+                new NavigationStack(navigationStack).pop);
         });
         actions.insert(action);
         app.setAccelsForAction("lister.new", ["<Control>n"]);
@@ -450,19 +465,15 @@ class Lister : ApplicationWindow
             }
 
             auto command = [openCommand, path_];
-            auto start = delegate() {
-                infof("spawning process '%s'", command);
-            };
+            auto start = delegate() { infof("spawning process '%s'", command); };
             auto progress = delegate(string msg) { info(msg); };
             auto finished = delegate() {
                 workers.finish();
                 infof("process '%s' finished", command);
             };
 
-            auto task = spawnLinked(&startProcess, cast(shared)command,
-                        cast(shared)start,
-                        cast(shared)progress,
-                        cast(shared)finished);
+            auto task = spawnLinked(&startProcess, cast(shared) command,
+                    cast(shared) start, cast(shared) progress, cast(shared) finished);
             workers.workStarted(task);
         }
     }

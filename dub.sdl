@@ -4,8 +4,8 @@ copyright "Copyright © 2016, gizmo"
 authors "gizmo"
 license "MIT"
 
-dependency "rainbow" version="0.0.2"
 dependency "gtk-d:gtkd" version="*"
+dependency "dyaml" version="~>0.8.0"
 
 configuration "debug" {
   targetType "executable"

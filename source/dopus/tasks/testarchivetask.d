@@ -22,7 +22,7 @@ void testArchiveTask(string path, shared void delegate(string) clear,
         auto data = zip.expand(member);
         CRC32 crc;
         crc.put(data);
-        ubyte[] h = crc.finish();
+        ubyte[] h = crc.finish().dup;
         auto uncompressedCrc = h.read!(uint, Endian.littleEndian)();
         auto expectedCrc = member.crc32;
         if (uncompressedCrc != expectedCrc)
