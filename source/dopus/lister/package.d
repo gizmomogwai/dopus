@@ -103,7 +103,6 @@ class Lister : ApplicationWindow
         listers = listers_;
         workers = new Workers();
 
-        addEvents(EventMask.ALL_EVENTS_MASK);
         auto accelGroup = new AccelGroup();
         addAccelGroup(accelGroup);
         addOnDestroy(&quitLister);
@@ -113,7 +112,6 @@ class Lister : ApplicationWindow
                 writeln("onStartinteractiveSearch");
                 return false;
             });
-        view.addEvents(EventMask.ALL_EVENTS_MASK);
         actions = new SimpleActionGroup();
         insertActionGroup("lister", actions);
 
