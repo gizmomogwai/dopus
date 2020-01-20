@@ -1,6 +1,6 @@
 module dopus;
 
-import gtk.application;
+import gtk.Application;
 
 import dopus.listers;
 import dopus.lister;
