@@ -18,13 +18,20 @@
 *** DONE open another lister on subdir
     CLOSED: [2020-01-17 Fri 22:40]
     - CLOSING NOTE [2020-01-17 Fri 22:40]
-*** IN-PROGRESS navigate and open files
-*** TODO open terminal here
+*** DONE navigate and open files
+    CLOSED: [2020-01-20 Mon 00:10]
+    - CLOSING NOTE [2020-01-20 Mon 00:10]
+*** DONE open terminal here
+    CLOSED: [2020-01-20 Mon 00:10]
+    - CLOSING NOTE [2020-01-20 Mon 00:10]
+*** DONE open a file
+*** TODO Sort listers
+*** TODO Filter listers
+https://stackoverflow.com/questions/56029759/how-to-filter-a-gtk-tree-view-that-uses-a-treestore-and-not-a-liststore
 *** TOOD copy from one lister to another
 *** TODO move from one lister to another
 *** TODO enter command in prompt
 *** rename a file
-*** open a file
 *** 
 
 * TODOs
@@ -32,7 +39,8 @@
 ** fix crash when mouse starts in emtpy area of filelister
 
 * GTK resources
-- https://api.gtkd.org/
+- [[https://api.gtkd.org/][GTKD Api Documentation]]
+- [[https://developer.gnome.org/gtk3/3.24/ch02.html][GTK Object Hierarchy]]
 - http://gexperts.com/wp/category/dlang/
 - https://gitlab.com/9898287/gtkdnotes
 - https://gitlab.com/Gert-dev/grestful
