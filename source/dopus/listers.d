@@ -12,7 +12,6 @@ import gtk.TreeViewColumn;
 
 class Listers : ApplicationWindow
 {
-
     Lister[] listers;
     ListStore store;
 

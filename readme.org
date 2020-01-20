@@ -28,15 +28,19 @@
 *** DONE Sort listers
     CLOSED: [2020-01-20 Mon 20:35]
     - CLOSING NOTE [2020-01-20 Mon 20:35]
-
+*** DONE change path in listers window when one lister changes
+*** DONE delete file
+    CLOSED: [2020-01-20 Mon 23:22]
+    - CLOSING NOTE [2020-01-20 Mon 23:22]
+*** TODO proper shutdown (e.g. last lister window unregisters -> app quits)
 *** TODO Filter listers
 https://stackoverflow.com/questions/56029759/how-to-filter-a-gtk-tree-view-that-uses-a-treestore-and-not-a-liststore
 *** TOOD copy from one lister to another
 *** TODO move from one lister to another
 *** TODO enter command in prompt
 *** TODO rename a file
-*** TODO change path in listers window when one lister changes
-
+    CLOSED: [2020-01-20 Mon 23:22]
+    - CLOSING NOTE [2020-01-20 Mon 23:22]
 * TODOs
 ** sorted lister view
 ** fix crash when mouse starts in emtpy area of filelister
