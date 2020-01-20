@@ -22,6 +22,7 @@ import gtk.CellRendererText;
 import gtk.ListStore;
 import gtk.MainWindow;
 import gtk.ScrolledWindow;
+import gtk.TreeIter;
 import gtk.TreeView;
 import gtk.TreeViewColumn;
 import gtk.Widget;
@@ -65,8 +66,6 @@ class Workers
     }
 }
 
-import dopus.navigationstack;
-
 /++
  + A Lister is a dopus list that shows usually file-like things.
  + Each lister has associated tasks that may run (even in parallel)
@@ -109,9 +108,9 @@ class Lister : ApplicationWindow
         view = new TreeView();
         view.setRulesHint(true);
         view.addOnStartInteractiveSearch(delegate(TreeView) {
-                writeln("onStartinteractiveSearch");
-                return false;
-            });
+            writeln("onStartinteractiveSearch");
+            return false;
+        });
         actions = new SimpleActionGroup();
         insertActionGroup("lister", actions);
 
@@ -120,15 +119,29 @@ class Lister : ApplicationWindow
         column = new TreeViewColumn("name", textCellRenderer, "text", 0);
         view.appendColumn(column);
         store = new ListStore([GType.STRING]);
+        store.setSortColumnId(0, SortType.ASCENDING);
+        store.setSortFunc(0, &sortFunc, null, null);
+
         view.setModel(store);
         add(new ScrolledWindow(view));
         visit(calculatePath(path_, "."));
         showAll();
         listers.register(this);
-        addOnActivateFocus(delegate(Window) { writeln("onActivateFocus");listers.moveToFront(this); });
-        addOnSetFocusChild(delegate(Widget, Window) { writeln("onSetFocusChild");});
-        addOnFocusIn(delegate(Event e, Widget w) { writeln("onFocusIn", e, w); listers.moveToFront(this); return false;});
-        view.addOnSetFocusChild(delegate(Widget, Window) { writeln("onSetFocusChild");});
+        addOnActivateFocus(delegate(Window) {
+            writeln("onActivateFocus");
+            listers.moveToFront(this);
+        });
+        addOnSetFocusChild(delegate(Widget, Window) {
+            writeln("onSetFocusChild");
+        });
+        addOnFocusIn(delegate(Event e, Widget w) {
+            writeln("onFocusIn", e, w);
+            listers.moveToFront(this);
+            return false;
+        });
+        view.addOnSetFocusChild(delegate(Widget, Window) {
+            writeln("onSetFocusChild");
+        });
 
         ListerActions.registerActions(this);
 
@@ -137,7 +150,6 @@ class Lister : ApplicationWindow
 
     private void wireShortcuts(Application app)
     {
-
         auto config = Loader.fromFile(".dopus.yaml").load();
         foreach (ref Node key, ref Node accelerators; config)
         {
@@ -400,4 +412,62 @@ class Lister : ApplicationWindow
         }
         store.setValue(store.createIter(), 0, s);
     }
+}
+
+string getString(GtkTreeModel* model, GtkTreeIter* i, int column)
+{
+    auto iter = new TreeIter(i);
+    iter.setModel(model);
+    return iter.getValueString(column);
+}
+
+bool looksLikeDir(string a)
+{
+    return a.endsWith("/");
+}
+
+int compare(string a, string b)
+{
+    enum aIsSmallerThanB = -1;
+    auto helper = function(string a, string b) {
+        if (a == b)
+        {
+            return 0;
+        }
+        else if (a < b)
+        {
+            return aIsSmallerThanB;
+        }
+        else
+        {
+            return -aIsSmallerThanB;
+        }
+    };
+    if (a.looksLikeDir)
+    {
+        if (b.looksLikeDir)
+        {
+            return helper(a, b);
+        }
+        else
+        {
+            return aIsSmallerThanB;
+        }
+    }
+    else
+    {
+        if (b.looksLikeDir)
+        {
+            return -aIsSmallerThanB;
+        }
+        else
+        {
+            return helper(a, b);
+        }
+    }
+}
+
+extern (C) int sortFunc(GtkTreeModel* model, GtkTreeIter* a, GtkTreeIter* b, void* userData)
+{
+    return compare(model.getString(a, 0), model.getString(b, 0));
 }
