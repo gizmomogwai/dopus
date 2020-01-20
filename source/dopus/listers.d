@@ -1,14 +1,14 @@
 module dopus.listers;
 
 import dopus.lister;
-
-import gtk.ApplicationWindow;
 import gtk.Application;
-import gtk.TreeView;
-import gtk.TreeViewColumn;
+import gtk.ApplicationWindow;
+import gtk.CellRendererText;
 import gtk.ListStore;
 import gtk.ScrolledWindow;
-import gtk.CellRendererText;
+import gtk.TreePath;
+import gtk.TreeView;
+import gtk.TreeViewColumn;
 
 class Listers : ApplicationWindow
 {
@@ -27,7 +27,11 @@ class Listers : ApplicationWindow
         store = new ListStore([GType.STRING, GType.STRING]);
         list.setModel(store);
         add(new ScrolledWindow(list));
-        addOnDelete(delegate(Event, Widget) { hideOnDelete(); return true;BE});
+        addOnDelete(delegate(Event, Widget) { hideOnDelete(); return true; });
+        list.addOnRowActivated(delegate(TreePath path, TreeViewColumn, TreeView) {
+            listers[path.getIndices[0]].present;
+        });
+
     }
 
     Listers register(Lister lister)
@@ -57,11 +61,12 @@ class Listers : ApplicationWindow
         foreach (lister; listers)
         {
             auto i = store.createIter();
-            store.setValue(i, 0, lister.isSource ? "SRC" : lister.isDestination ? "DST":"");
+            store.setValue(i, 0, lister.isSource ? "SRC" : lister.isDestination ? "DST" : "");
             store.setValue(i, 1, lister.toString);
         }
         return this;
     }
+
     public Listers refresh()
     {
         return update(listers);
