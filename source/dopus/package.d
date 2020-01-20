@@ -50,7 +50,6 @@ class Dopus : Application
             {
                 layout.layout(new Lister(this, listers, dir));
             }
-            listers.showAll();
         });
         addOnCommandLine(delegate(Scoped!ApplicationCommandLine acl, GioApplication gioApp) {
             activate();

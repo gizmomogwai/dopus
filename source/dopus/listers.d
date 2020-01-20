@@ -21,10 +21,13 @@ class Listers : ApplicationWindow
         super(app);
 
         auto list = new TreeView();
-        list.appendColumn(new TreeViewColumn("lister", new CellRendererText(), "text", 0));
-        store = new ListStore([GType.STRING]);
+        list.appendColumn(new TreeViewColumn("state", new CellRendererText(), "text", 0));
+        list.appendColumn(new TreeViewColumn("lister", new CellRendererText(), "text", 1));
+
+        store = new ListStore([GType.STRING, GType.STRING]);
         list.setModel(store);
         add(new ScrolledWindow(list));
+        addOnDelete(delegate(Event, Widget) { hideOnDelete(); return true;BE});
     }
 
     Listers register(Lister lister)
@@ -49,13 +52,19 @@ class Listers : ApplicationWindow
     private Listers update(Lister[] newListers)
     {
         listers = newListers;
-        mark();
+        prefixSourceAndDestination();
         store.clear();
         foreach (lister; listers)
         {
-            store.setValue(store.createIter(), 0, lister.toString);
+            auto i = store.createIter();
+            store.setValue(i, 0, lister.isSource ? "SRC" : lister.isDestination ? "DST":"");
+            store.setValue(i, 1, lister.toString);
         }
         return this;
+    }
+    public Listers refresh()
+    {
+        return update(listers);
     }
 
     public Listers moveToFront(Lister lister)
@@ -72,7 +81,7 @@ class Listers : ApplicationWindow
         return update(newListers);
     }
 
-    private Listers mark()
+    private Listers prefixSourceAndDestination()
     {
         foreach (idx, l; listers)
         {

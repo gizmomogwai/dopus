@@ -19,4 +19,6 @@ lister.delete:
     - <Alt>d
 lister.refresh:
     - <Control>r
-
+lister.showListers:
+    - <Control>l
+    

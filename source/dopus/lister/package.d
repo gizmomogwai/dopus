@@ -126,20 +126,10 @@ class Lister : ApplicationWindow
         add(new ScrolledWindow(view));
         showAll();
         listers.register(this);
-        addOnActivateFocus(delegate(Window) {
-            writeln("onActivateFocus");
-            listers.moveToFront(this);
-        });
-        addOnSetFocusChild(delegate(Widget, Window) {
-            writeln("onSetFocusChild");
-        });
         addOnFocusIn(delegate(Event e, Widget w) {
             writeln("onFocusIn", e, w);
             listers.moveToFront(this);
             return false;
-        });
-        view.addOnSetFocusChild(delegate(Widget, Window) {
-            writeln("onSetFocusChild");
         });
 
         ListerActions.registerActions(this);
@@ -149,7 +139,8 @@ class Lister : ApplicationWindow
         visit(calculatePath(path_, "."));
     }
 
-    Lister refresh() {
+    Lister refresh()
+    {
         visit(navigationStack.path, false);
         return this;
     }
@@ -199,12 +190,12 @@ class Lister : ApplicationWindow
 
     override string toString()
     {
-        return "%s Lister(path=%s)".format(state, navigationStack.path);
+        return "Lister(path=%s)".format(navigationStack.path);
     }
 
     string state()
     {
-        return isSource ? "SRC" : isDestination ? "DST" : "   ";
+        return isSource ? "[S]" : isDestination ? "[D]" : "[ ]";
     }
 
     Lister setPath(string path_, bool putToNavigationStack)
@@ -213,7 +204,9 @@ class Lister : ApplicationWindow
         {
             navigationStack.visit(path_);
         }
-        return updateTitle();
+        updateTitle();
+        listers.refresh();
+        return this;
     }
 
     Lister updateTitle()
