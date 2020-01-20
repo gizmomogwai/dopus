@@ -31,8 +31,8 @@ https://stackoverflow.com/questions/56029759/how-to-filter-a-gtk-tree-view-that-
 *** TOOD copy from one lister to another
 *** TODO move from one lister to another
 *** TODO enter command in prompt
-*** rename a file
-*** 
+*** TODO rename a file
+*** TODO change path in listers window when one lister changes
 
 * TODOs
 ** sorted lister view

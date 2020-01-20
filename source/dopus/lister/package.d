@@ -10,6 +10,7 @@ import dopus.task;
 import dopus.tasks.filllistertask;
 import dopus.tasks.startprocesstask;
 import dyaml;
+import gdk.Event;
 import gio.SimpleAction;
 import gio.SimpleActionGroup;
 import gtk.AccelGroup;
@@ -102,12 +103,17 @@ class Lister : ApplicationWindow
         listers = listers_;
         workers = new Workers();
 
+        addEvents(EventMask.ALL_EVENTS_MASK);
         auto accelGroup = new AccelGroup();
         addAccelGroup(accelGroup);
         addOnDestroy(&quitLister);
         view = new TreeView();
         view.setRulesHint(true);
-
+        view.addOnStartInteractiveSearch(delegate(TreeView) {
+                writeln("onStartinteractiveSearch");
+                return false;
+            });
+        view.addEvents(EventMask.ALL_EVENTS_MASK);
         actions = new SimpleActionGroup();
         insertActionGroup("lister", actions);
 
@@ -121,7 +127,10 @@ class Lister : ApplicationWindow
         visit(calculatePath(path_, "."));
         showAll();
         listers.register(this);
-        addOnSetFocus(delegate(Widget, Window) { listers.moveToFront(this); });
+        addOnActivateFocus(delegate(Window) { writeln("onActivateFocus");listers.moveToFront(this); });
+        addOnSetFocusChild(delegate(Widget, Window) { writeln("onSetFocusChild");});
+        addOnFocusIn(delegate(Event e, Widget w) { writeln("onFocusIn", e, w); listers.moveToFront(this); return false;});
+        view.addOnSetFocusChild(delegate(Widget, Window) { writeln("onSetFocusChild");});
 
         ListerActions.registerActions(this);
 
