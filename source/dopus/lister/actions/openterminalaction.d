@@ -5,7 +5,7 @@ import std.process;
 
 static this()
 {
-    ListerActions.register(&factory!OpenTerminalAction);
+    ListerActions.register!OpenTerminalAction;
 }
 
 class OpenTerminalAction : SimpleAction

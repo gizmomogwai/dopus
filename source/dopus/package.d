@@ -6,6 +6,16 @@ import dopus.listers;
 import dopus.lister;
 import gtk.Window;
 import std.stdio;
+import std.string;
+
+string unescape(string file)
+{
+    if (file.endsWith("/"))
+    {
+        return file[0 .. $ - 1];
+    }
+    return file;
+}
 
 class Layout
 {

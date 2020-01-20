@@ -4,7 +4,7 @@ import dopus.lister.actions;
 
 static this()
 {
-    ListerActions.register(&factory!ShowNavigationStackAction);
+    ListerActions.register!ShowNavigationStackAction;
 }
 
 class ShowNavigationStackAction : SimpleAction

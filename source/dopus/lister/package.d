@@ -124,7 +124,6 @@ class Lister : ApplicationWindow
 
         view.setModel(store);
         add(new ScrolledWindow(view));
-        visit(calculatePath(path_, "."));
         showAll();
         listers.register(this);
         addOnActivateFocus(delegate(Window) {
@@ -146,6 +145,13 @@ class Lister : ApplicationWindow
         ListerActions.registerActions(this);
 
         wireShortcuts(app);
+
+        visit(calculatePath(path_, "."));
+    }
+
+    Lister refresh() {
+        visit(navigationStack.path, false);
+        return this;
     }
 
     private void wireShortcuts(Application app)

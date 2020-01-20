@@ -12,7 +12,7 @@ import std.string;
 
 static this()
 {
-    ListerActions.register(&factory!NewListersInSubfoldersAction);
+    ListerActions.register!NewListersInSubfoldersAction;
 }
 
 class NewListersInSubfoldersAction : SimpleAction

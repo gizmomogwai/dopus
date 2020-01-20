@@ -1,12 +1,13 @@
 module dopus.lister.actions.deleteaction;
 
+import dopus;
 import dopus.lister.actions;
 import gtkd.x.treeselection;
 import std.file;
 
 static this()
 {
-    ListerActions.register(&factory!DeleteAction);
+    ListerActions.register!DeleteAction;
 }
 
 class DeleteAction : SimpleAction
@@ -18,8 +19,13 @@ class DeleteAction : SimpleAction
             foreach (file; lister.view.getSelection.getSelection)
             {
                 import std.file;
-
-                file.remove;
+                auto h = file.unescape;
+                if (h.isDir) {
+                    h.rmdirRecurse;
+                } else {
+                    h.remove;
+                }
+                lister.refresh();
             }
         });
     }

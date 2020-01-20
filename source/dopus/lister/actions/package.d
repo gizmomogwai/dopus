@@ -14,9 +14,9 @@ SimpleAction factory(T)(Lister lister)
 class ListerActions
 {
     static SimpleAction function(Lister lister)[] factories;
-    public static void register(T)(T factory)
+    public static void register(T)()
     {
-        factories ~= factory;
+        factories ~= function(Lister lister) { return new T(lister); };
     }
 
     public static void registerActions(Lister lister)

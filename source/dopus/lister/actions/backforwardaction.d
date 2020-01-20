@@ -4,8 +4,8 @@ import dopus.lister.actions;
 
 static this()
 {
-    ListerActions.register(&factory!BackAction);
-    ListerActions.register(&factory!ForwardAction);
+    ListerActions.register!BackAction;
+    ListerActions.register!ForwardAction;
 }
 
 class BackAction : SimpleAction

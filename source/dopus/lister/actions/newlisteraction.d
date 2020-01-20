@@ -4,7 +4,7 @@ import dopus.lister.actions;
 
 static this()
 {
-    ListerActions.register(&factory!NewListerAction);
+    ListerActions.register!NewListerAction;
 }
 
 class NewListerAction : SimpleAction

@@ -6,7 +6,7 @@ import std.file;
 
 static this()
 {
-    ListerActions.register(&factory!ExecuteAction);
+    ListerActions.register!ExecuteAction;
 }
 
 class ExecuteAction : SimpleAction
@@ -18,14 +18,10 @@ class ExecuteAction : SimpleAction
         addOnActivate(delegate(Variant, SimpleAction) {
             foreach (file; lister.view.getSelection.getSelection)
             {
+                import dopus;
                 import std.algorithm.searching;
 
-                if (file.endsWith("/"))
-                {
-                    file = file[0 .. $ - 1];
-                }
-
-                file = Lister.calculatePath(lister.navigationStack.path, file);
+                file = Lister.calculatePath(lister.navigationStack.path, file.unescape);
                 if (file.isDir)
                 {
                     lister.visit(file);
