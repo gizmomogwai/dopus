@@ -19,10 +19,14 @@ class DeleteAction : SimpleAction
             foreach (file; lister.view.getSelection.getSelection)
             {
                 import std.file;
+
                 auto h = file.unescape;
-                if (h.isDir) {
+                if (h.isDir)
+                {
                     h.rmdirRecurse;
-                } else {
+                }
+                else
+                {
                     h.remove;
                 }
                 lister.refresh();
