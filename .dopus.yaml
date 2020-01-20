@@ -15,3 +15,8 @@ lister.openTerminalHere:
     - <Control>t
 lister.showNavigationStack:
     - <Alt>n
+lister.delete:
+    - <Control>n
+    - <Control>s
+    - <Alt>s
+    - <Alt>d
