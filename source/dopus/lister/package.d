@@ -37,6 +37,11 @@ import std.process;
 import std.stdio;
 import std.string;
 
+string shorten(string input) {
+    import std.process;
+    return input.replace(environment["HOME"], "~");
+}
+
 class Workers
 {
     private bool busy;
@@ -190,7 +195,7 @@ class Lister : ApplicationWindow
 
     override string toString()
     {
-        return "Lister(path=%s)".format(navigationStack.path);
+        return "Lister(path=%s)".format(navigationStack.path.shorten);
     }
 
     string state()
@@ -211,7 +216,7 @@ class Lister : ApplicationWindow
 
     Lister updateTitle()
     {
-        setTitle("%s - %s".format(state, navigationStack.path));
+        setTitle("%s - %s".format(state, navigationStack.path.shorten));
         return this;
     }
 

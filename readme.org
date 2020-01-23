@@ -1,4 +1,4 @@
-#+TODO: TODO IN-PROGRESS BLOCKED DONE
+#+TODO: TODO IN-PROGRESS BLOCKED | DONE WONTDO
 * DOpus
 [[https://www.gpsoft.com.au/][Directory Opus]] is still alive, but I wanted to do something similar in a modern language.
 
@@ -8,10 +8,26 @@
 
 ** Thanks
 - Thanks go out to the [[http://dlang.org/][dlang.org]] for an interesting language,
-- to Vladim Lopatin for creating [[https://github.com/buggins/dlangui][dlangui]],
+- to Vladim Lopatin for creating [[https://github.com/buggins/dlangui][dlangui]]
+- for gtkd
 - and to d's package manager [[http://code.dlang.org/][dub]], which I really enjoy
 
-** My normal operation during the day
+** Todo
+*** TODO window layout
+*** TODO tab to switch between src and dst
+*** TODO send to destination
+ctrl- ->
+*** TODO proper shutdown (e.g. last lister window unregisters -> app quits)
+*** TODO copy from one lister to another
+*** TODO move from one lister to another
+*** TODO enter command in prompt
+*** TODO rename a file
+*** TODO Filter listers
+https://stackoverflow.com/questions/56029759/how-to-filter-a-gtk-tree-view-that-uses-a-treestore-and-not-a-liststore
+
+*** TODO further path shortening
+*** TODO clear keyboard strategy
+** Done
 *** DONE open another lister
     CLOSED: [2020-01-17 Fri 22:39]
     - CLOSING NOTE [2020-01-17 Fri 22:39]
@@ -32,19 +48,15 @@
 *** DONE delete file
     CLOSED: [2020-01-20 Mon 23:22]
     - CLOSING NOTE [2020-01-20 Mon 23:22]
-*** TODO switch through dopus windows with cmd tab?!
-*** TODO proper shutdown (e.g. last lister window unregisters -> app quits)
-*** TODO Filter listers
-https://stackoverflow.com/questions/56029759/how-to-filter-a-gtk-tree-view-that-uses-a-treestore-and-not-a-liststore
-*** TOOD copy from one lister to another
-*** TODO move from one lister to another
-*** TODO enter command in prompt
-*** TODO rename a file
-    CLOSED: [2020-01-20 Mon 23:22]
-    - CLOSING NOTE [2020-01-20 Mon 23:22]
-* TODOs
-** sorted lister view
-** fix crash when mouse starts in emtpy area of filelister
+*** WONTDO switch through dopus windows with cmd tab?!
+    CLOSED: [2020-01-23 Thu 21:02]
+    - CLOSING NOTE [2020-01-23 Thu 21:02]
+    - CLOSING NOTE [2020-01-23 Thu 21:02]
+*** DONE openterminal in linux
+    CLOSED: [2020-01-23 Thu 22:47]
+
+    - CLOSING NOTE [2020-01-23 Thu 22:47]
+
 
 * GTK resources
 - [[https://api.gtkd.org/][GTKD Api Documentation]]

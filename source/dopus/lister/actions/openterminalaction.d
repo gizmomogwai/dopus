@@ -14,9 +14,23 @@ class OpenTerminalAction : SimpleAction
     {
         super("openTerminalHere", null);
         addOnActivate(delegate(Variant, SimpleAction) {
-            auto pid = spawnProcess([
+            version (OSX)
+            {
+                auto command = [
                     "open", "-a", "terminal", lister.navigationStack.path
-                ]);
+                ];
+            }
+
+            version (linux)
+            {
+                import std.string;
+
+                auto command = [
+                    "gnome-terminal",
+                    format!"--working-directory=%s"(lister.navigationStack.path)
+                ];
+            }
+            auto pid = spawnProcess(command);
         });
     }
 }
