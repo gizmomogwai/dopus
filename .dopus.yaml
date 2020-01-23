@@ -21,4 +21,5 @@ lister.refresh:
     - <Control>r
 lister.showListers:
     - <Control>l
-
+lister.flipSourceAndDestination:
+    - <Control>f
