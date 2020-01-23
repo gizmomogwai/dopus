@@ -126,8 +126,8 @@ class Lister : ApplicationWindow
         add(new ScrolledWindow(view));
         showAll();
         listers.register(this);
+
         addOnFocusIn(delegate(Event e, Widget w) {
-            writeln("onFocusIn", e, w);
             listers.moveToFront(this);
             return false;
         });

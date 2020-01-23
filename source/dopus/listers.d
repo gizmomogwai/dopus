@@ -94,4 +94,9 @@ class Listers : ApplicationWindow
         }
         return this;
     }
+
+    public auto size()
+    {
+        return listers.length;
+    }
 }

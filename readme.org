@@ -32,6 +32,7 @@
 *** DONE delete file
     CLOSED: [2020-01-20 Mon 23:22]
     - CLOSING NOTE [2020-01-20 Mon 23:22]
+*** TODO switch through dopus windows with cmd tab?!
 *** TODO proper shutdown (e.g. last lister window unregisters -> app quits)
 *** TODO Filter listers
 https://stackoverflow.com/questions/56029759/how-to-filter-a-gtk-tree-view-that-uses-a-treestore-and-not-a-liststore

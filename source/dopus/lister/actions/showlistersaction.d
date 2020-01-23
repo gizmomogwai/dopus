@@ -13,7 +13,8 @@ class ShowListersAction : SimpleAction
     {
         super("showListers", null);
         addOnActivate(delegate(Variant, SimpleAction) {
-            lister.listers.showAll();
+            lister.listers.showAll;
+            lister.listers.present;
         });
     }
 }

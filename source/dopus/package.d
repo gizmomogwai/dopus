@@ -1,9 +1,8 @@
 module dopus;
 
-import gtk.Application;
-
-import dopus.listers;
 import dopus.lister;
+import dopus.listers;
+import gtk.Application;
 import gtk.Window;
 import std.stdio;
 import std.string;
@@ -40,10 +39,6 @@ class Dopus : Application
         import gio.ApplicationCommandLine;
 
         addOnActivate(delegate(GioApplication gioApp) {
-            import gtk.MainWindow;
-            import gtk.Button;
-            import gtk.Box;
-
             listers = new Listers(this);
             layout.layout(listers);
             foreach (dir; args[1 .. $])
