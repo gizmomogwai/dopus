@@ -5,12 +5,10 @@
 module gtkd.x.threads;
 
 import core.memory;
-
+import gdk.Threads;
 import std.algorithm;
 import std.experimental.logger;
 import std.stdio;
-
-import gdk.Threads;
 
 /**
  * Simple structure that contains a pointer to a delegate. This is necessary because delegates are not directly
@@ -116,7 +114,7 @@ void threadsAddIdleDelegate(T, parameterTuple...)(T theDelegate, parameterTuple 
 
         catch (Exception e)
         {
-            warning("Unexpected exception occurred in wrapper");
+            warning("Unexpected exception occurred in wrapper", e);
             // Catch exceptions here as otherwise, memory may never be freed below.
         }
 

@@ -1,8 +1,7 @@
 module dopus.task;
-import std.concurrency;
 
 import core.time;
-
+import std.concurrency;
 /**
  * ListerTask runs in the background of a lister.
  * It is splitted into two parts:
@@ -28,7 +27,7 @@ class Task
     bool wasCanceled()
     {
         bool c = false;
-        auto current = MonoTime.currTime();
+        const current = MonoTime.currTime();
         if ((current - startTime) > dur!"seconds"(1))
         {
             receiveTimeout(dur!"msecs"(-1), (Task.Cancel) { c = true; });

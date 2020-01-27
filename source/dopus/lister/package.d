@@ -38,7 +38,7 @@ import std.stdio;
 import std.string;
 
 string shorten(string input) {
-    import std.process;
+    import std.process : environment;
     return input.replace(environment["HOME"], "~");
 }
 
@@ -132,7 +132,9 @@ class Lister : ApplicationWindow
         showAll();
         listers.register(this);
 
-        addOnFocusIn(delegate(Event e, Widget w) {
+        addOnFocusIn(delegate(Event event, Widget widget) {
+                event = null;
+                widget = null;
             listers.moveToFront(this);
             return false;
         });
@@ -186,14 +188,14 @@ class Lister : ApplicationWindow
         writeln("~Lister");
     }
 
-    void quitLister(Widget widget)
+    void quitLister(Widget)
     {
         writeln("Bye Lister.");
         listers.unregister(this);
         close();
     }
 
-    override string toString()
+    override string toString() const
     {
         return "Lister(path=%s)".format(navigationStack.path.shorten);
     }
@@ -221,14 +223,6 @@ class Lister : ApplicationWindow
     }
 
     /+
-    fileList.itemClick = (Widget src, int itemIndex) {
-      info("itemClick: ");
-      return true;
-    };
-    fileList.click = (Widget w) {
-      info("click: ");
-      return true;
-    };
     fileList.keyEvent = (Widget w, KeyEvent e) {
       // info("keyEvent: ", e.action.to!string, ", ", e.keyCode.to!string, ", ", e.text);
       auto h = path ~ "/" ~ adapter.items.get((cast(ListWidget)w).selectedItemIndex).to!string;
@@ -314,13 +308,8 @@ class Lister : ApplicationWindow
     }
   }
 +/
-    void visit(string path_, bool putToNavigationStack = true)
+    final void visit(string path_, bool putToNavigationStack = true)
     {
-        /+
-      Cancellable cancellable = new Cancellable;
-      Task t = new Task(this, cancellable, &visitCallback, cast(void*)this);
-      t.runInThread(&visitThread);
-+/
         if (path_.isDir)
         {
             setPath(path_, putToNavigationStack);
@@ -330,32 +319,17 @@ class Lister : ApplicationWindow
                 workers.cancel();
             }
 
-            auto fillListerClear = (string path) {
-                threadsAddIdleDelegate(delegate() { store.clear(); return false; });
-            };
-            auto fillListerProgress = (DirEntry entry) {
-                threadsAddIdleDelegate(delegate() {
-                    addEntry(entry);
-                    return false;
-                });
-            };
-            auto fillListerFinished = () {
-                workers.finish();
-                //        window.invalidate();
-            };
-            auto task = spawnLinked(&fillListerTask, navigationStack.path, cast(shared) fillListerClear,
-                    cast(shared) fillListerProgress, cast(shared) fillListerFinished);
-            //      workers.workStarted(task);
+            spawnLinked(&fillListerTask, cast(shared)this, navigationStack.path);
         }
         else
         {
             version (OSX)
             {
-                auto openCommand = "open";
+                const openCommand = "open";
             }
             else
             {
-                auto openCommand = "xdg-open";
+                const openCommand = "xdg-open";
             }
 
             auto command = [openCommand, path_];
@@ -395,19 +369,29 @@ class Lister : ApplicationWindow
     workers.workStarted(task);
   }
 +/
-    void clear(string path)
-    {
-        /+
-    window.executeInUiThread({
-        window.windowCaption = path.to!dstring;
-        fileList.selectedItemIndex = 0;
-        adapter.clear();
-      });
-+/
 
+    shared(Lister) clear() shared {
+        threadsAddIdleDelegate(delegate() {
+                (cast()store).clear();
+                return false;
+            });
+        return this;
     }
 
-    void addEntry(DirEntry entry)
+    void clear(string path)
+    {
+        path = null;
+    }
+
+    shared(Lister) addEntry(DirEntry entry) shared {
+        threadsAddIdleDelegate(delegate() {
+                (cast()this).addEntry(entry);
+                return false;
+            });
+        return this;
+    }
+
+    Lister addEntry(DirEntry entry)
     {
         auto s = entry.name.baseName;
         if (entry.isDir)
@@ -415,6 +399,7 @@ class Lister : ApplicationWindow
             s ~= "/";
         }
         store.setValue(store.createIter(), 0, s);
+        return this;
     }
 }
 

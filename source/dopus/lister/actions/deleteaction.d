@@ -18,7 +18,7 @@ class DeleteAction : SimpleAction
         addOnActivate(delegate(Variant, SimpleAction) {
             foreach (file; lister.view.getSelection.getSelection)
             {
-                import std.file;
+                import std.file : isDir;
 
                 auto h = file.unescape;
                 if (h.isDir)

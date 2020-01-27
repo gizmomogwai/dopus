@@ -18,9 +18,7 @@ class ExecuteAction : SimpleAction
         addOnActivate(delegate(Variant, SimpleAction) {
             foreach (file; lister.view.getSelection.getSelection)
             {
-                import dopus;
-                import std.algorithm.searching;
-
+                import dopus : unescape;
                 file = Lister.calculatePath(lister.navigationStack.path, file.unescape);
                 if (file.isDir)
                 {

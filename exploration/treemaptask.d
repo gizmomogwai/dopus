@@ -1,19 +1,19 @@
 module tasks.treemaptask;
 
 import dlangui;
+import filenode;
 import std.algorithm;
 import std.datetime;
 import std.experimental.logger;
 import std.file;
 import std.path;
-import std.variant;
 import std.string;
+import std.variant;
 import tm = treemap;
 import treemapwidget;
-import filenode;
 
 alias FileTreeMap = TreeMapWidget!FileNode;
-auto treeMapTaskInit(string path)
+auto treeMapTaskInit(string)
 {
     auto res = new FileTreeMap("filemap", 3);
     res.addTreeMapFocusedListener((FileTreeMap.Maybe maybeNode) {
@@ -26,8 +26,8 @@ auto treeMapTaskInit(string path)
     return res;
 }
 
-auto treeMapTask(string path, shared void delegate(string) clear,
-        shared void delegate(FileNode, string) progress, shared void delegate() finished)
+void treeMapTask(string, shared void delegate(string),
+        shared void delegate(FileNode, string), shared void delegate())
 {
 
     /++

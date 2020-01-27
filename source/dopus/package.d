@@ -36,9 +36,9 @@ class Dopus : Application
         super("com.flopcode.Dopus", ApplicationFlags.HANDLES_COMMAND_LINE);
         auto layout = new Layout;
         import gio.Application : GioApplication = Application;
-        import gio.ApplicationCommandLine;
+        import gio.ApplicationCommandLine : ApplicationCommandLine;
 
-        addOnActivate(delegate(GioApplication gioApp) {
+        addOnActivate(delegate(GioAppliocation) {
             listers = new Listers(this);
             layout.layout(listers);
             foreach (dir; args[1 .. $])
@@ -46,7 +46,7 @@ class Dopus : Application
                 layout.layout(new Lister(this, listers, dir));
             }
         });
-        addOnCommandLine(delegate(Scoped!ApplicationCommandLine acl, GioApplication gioApp) {
+        addOnCommandLine(delegate(Scoped!ApplicationCommandLine, GioApplication) {
             activate();
             return 0;
         });

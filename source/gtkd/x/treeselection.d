@@ -1,13 +1,13 @@
 module gtkd.x.treeselection;
 
-private import std.array;
+private import gtk.TreeIter;
+private import gtk.TreeModel;
 private import gtk.TreeSelection;
+private import std.array;
 
 extern (C) void treeSelectionSelectedForeach(GtkTreeModel* model,
         GtkTreePath* path, GtkTreeIter* iter, void* data)
 {
-    import gtk.TreeModel;
-    import gtk.TreeIter;
 
     TreeModel m = new TreeModel(model);
     auto res = cast(Appender!(string[])*) data;

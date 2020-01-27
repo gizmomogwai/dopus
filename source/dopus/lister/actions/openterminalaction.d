@@ -20,17 +20,16 @@ class OpenTerminalAction : SimpleAction
                     "open", "-a", "terminal", lister.navigationStack.path
                 ];
             }
-
-            version (linux)
+            else
             {
-                import std.string;
+                import std.string : format;
 
                 auto command = [
                     "gnome-terminal",
                     format!"--working-directory=%s"(lister.navigationStack.path)
                 ];
             }
-            auto pid = spawnProcess(command);
+            spawnProcess(command);
         });
     }
 }

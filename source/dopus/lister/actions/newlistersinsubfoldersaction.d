@@ -1,7 +1,6 @@
 module dopus.lister.actions.newlistersinsubfoldersaction;
 
 import dopus.lister.actions;
-import dopus.lister;
 import dopus.navigationstack;
 import gio.SimpleAction;
 import gio.SimpleActionGroup;
@@ -21,7 +20,7 @@ class NewListersInSubfoldersAction : SimpleAction
     {
         super("newInSubfolders", null);
         addOnActivate(delegate(Variant, SimpleAction) {
-            import std.file;
+                import std.file : isDir;
 
             foreach (file; lister.view.getSelection.getSelection)
             {

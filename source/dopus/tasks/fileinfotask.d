@@ -2,10 +2,9 @@ module dopus.tasks.fileinfotask;
 
 import dopus.lister;
 import dopus.task;
-
 import std.concurrency;
-import std.format;
 import std.file;
+import std.format;
 import std.stdio;
 
 void fileInfoTask(string path, shared void delegate(string) clear,
@@ -17,7 +16,7 @@ void fileInfoTask(string path, shared void delegate(string) clear,
         const ulong size;
         const ulong nrOfFiles;
         const bool canceled;
-        public this(ulong size_, ulong nrOfFiles_, bool canceled_)
+        this(ulong size_, ulong nrOfFiles_, bool canceled_)
         {
             size = size_;
             nrOfFiles = nrOfFiles_;
@@ -34,7 +33,7 @@ void fileInfoTask(string path, shared void delegate(string) clear,
             return new Result(size + size_, nrOfFiles + 1, canceled);
         }
 
-        override string toString()
+        override string toString() const
         {
             return canceled ? "FileInfo got canceled" : "FileInfo { nrOfFiles=%s, size=%s }".format(nrOfFiles,
                     size);
@@ -49,7 +48,6 @@ void fileInfoTask(string path, shared void delegate(string) clear,
         {
             foreach (e; path.dirEntries(SpanMode.depth))
             {
-                bool canceled = false;
                 if (e.isFile())
                 {
                     res = res.add(e.getSize());

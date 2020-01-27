@@ -13,7 +13,7 @@ class FocusNextAction : SimpleAction
     {
         super("focusNext", null);
         addOnActivate(delegate(Variant, SimpleAction) {
-            import std.stdio;
+                import std.stdio : writeln;
 
             writeln("focusNext");
         });

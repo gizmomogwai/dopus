@@ -67,7 +67,7 @@ class NavigationStack
 
     bool forward()
     {
-        if (idx < history.length - 1)
+        if (idx + 1 < history.length)
         {
             ++idx;
             return true;
@@ -75,7 +75,7 @@ class NavigationStack
         return false;
     }
 
-    string path()
+    string path() const
     {
         if (idx == -1)
         {
@@ -88,9 +88,9 @@ class NavigationStack
         return history[idx];
     }
 
-    override string toString()
+    override string toString() const
     {
-        import std.array;
+        import std.array : appender;
 
         auto res = appender!string;
         res.put("NavigationStack {\n");

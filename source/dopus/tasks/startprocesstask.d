@@ -20,7 +20,8 @@ void startProcess(shared(string[]) command, shared void delegate() start,
         {
             break;
         }
-        import core.thread;
+        import core.thread : Thread;
+        import core.time : dur;
 
         Thread.sleep(dur!"seconds"(1));
         res = pid.tryWait();

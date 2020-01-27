@@ -2,14 +2,13 @@ module dopus.tasks.testarchivetask;
 
 import dopus.lister;
 import dopus.task;
-
+import std.bitmanip;
 import std.concurrency;
-import std.format;
-import std.zip;
+import std.digest.crc;
 import std.experimental.logger;
 import std.file;
-import std.digest.crc;
-import std.bitmanip;
+import std.format;
+import std.zip;
 
 void testArchiveTask(string path, shared void delegate(string) clear,
         shared void delegate(string) progress, shared void delegate() finished)
