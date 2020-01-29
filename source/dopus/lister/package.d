@@ -3,12 +3,10 @@ module dopus.lister;
 //import tasks.fileinfotask;
 //import tasks.testarchivetask;
 import core.time;
+import dopus;
 import dopus.lister.actions;
 import dopus.listers;
 import dopus.navigationstack;
-import dopus.task;
-import dopus.tasks.filllistertask;
-import dopus.tasks.startprocesstask;
 import dyaml;
 import gdk.Event;
 import gio.SimpleAction;
@@ -37,9 +35,39 @@ import std.process;
 import std.stdio;
 import std.string;
 
-string shorten(string input) {
+string shorten(string input)
+{
     import std.process : environment;
+
     return input.replace(environment["HOME"], "~");
+}
+
+void startProcess(shared(string[]) command, shared void delegate() start,
+        shared void delegate(string) progress, shared void delegate() finished)
+{
+    start();
+
+    auto pid = spawnProcess(cast(string[]) command);
+    auto res = pid.tryWait();
+    while (res.terminated == false)
+    {
+        import core.thread : Thread;
+        import core.time : dur;
+
+        Thread.sleep(dur!"seconds"(1));
+        res = pid.tryWait();
+    }
+    progress("running '%s' finished with status '%d'".format(command, res.status));
+    finished();
+}
+
+void fillListerTask(shared(Lister) lister, string path)
+{
+    lister.clear();
+    foreach (dirEntry; dirEntries(path, SpanMode.shallow))
+    {
+        lister.addEntry(dirEntry);
+    }
 }
 
 class Workers
@@ -71,6 +99,16 @@ class Workers
     }
 }
 
+class Status : Button
+{
+    Lister lister;
+    this(Lister lister)
+    {
+        super("status");
+        this.lister = lister;
+        addOnClicked(delegate(Button) { writeln("Clicked"); });
+    }
+}
 /++
  + A Lister is a dopus list that shows usually file-like things.
  + Each lister has associated tasks that may run (even in parallel)
@@ -82,9 +120,10 @@ class Workers
  +  - to interact with the ui, they should take several delegates,
  +    that are then responsible to transport the data back to the ui thread if necessary
  +/
+
 class Lister : ApplicationWindow
 {
-    Application app;
+    Dopus app;
     Listers listers;
     NavigationStack navigationStack;
     SimpleActionGroup actions;
@@ -98,7 +137,7 @@ class Lister : ApplicationWindow
 
     Workers workers;
 
-    this(Application app, Listers listers_, string path_,
+    this(Dopus app, Listers listers_, string path_,
             NavigationStack navigationStack_ = new NavigationStack)
     {
         super(app);
@@ -128,13 +167,16 @@ class Lister : ApplicationWindow
         store.setSortFunc(0, &sortFunc, null, null);
 
         view.setModel(store);
-        add(new ScrolledWindow(view));
+        auto box = new Box(Orientation.VERTICAL, 5);
+        box.packStart(new ScrolledWindow(view), true, true, 0);
+        box.packStart(new Status(this), false, true, 0);
+        add(box);
         showAll();
         listers.register(this);
 
         addOnFocusIn(delegate(Event event, Widget widget) {
-                event = null;
-                widget = null;
+            event = null;
+            widget = null;
             listers.moveToFront(this);
             return false;
         });
@@ -319,7 +361,7 @@ class Lister : ApplicationWindow
                 workers.cancel();
             }
 
-            spawnLinked(&fillListerTask, cast(shared)this, navigationStack.path);
+            spawnLinked(&fillListerTask, cast(shared) this, navigationStack.path);
         }
         else
         {
@@ -370,11 +412,9 @@ class Lister : ApplicationWindow
   }
 +/
 
-    shared(Lister) clear() shared {
-        threadsAddIdleDelegate(delegate() {
-                (cast()store).clear();
-                return false;
-            });
+    shared(Lister) clear() shared
+    {
+        threadsAddIdleDelegate(delegate() { (cast() store).clear(); return false; });
         return this;
     }
 
@@ -383,11 +423,12 @@ class Lister : ApplicationWindow
         path = null;
     }
 
-    shared(Lister) addEntry(DirEntry entry) shared {
+    shared(Lister) addEntry(DirEntry entry) shared
+    {
         threadsAddIdleDelegate(delegate() {
-                (cast()this).addEntry(entry);
-                return false;
-            });
+            (cast() this).addEntry(entry);
+            return false;
+        });
         return this;
     }
 

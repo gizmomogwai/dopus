@@ -8,8 +8,7 @@ private import std.array;
 extern (C) void treeSelectionSelectedForeach(GtkTreeModel* model,
         GtkTreePath* path, GtkTreeIter* iter, void* data)
 {
-
-    TreeModel m = new TreeModel(model);
+    auto m = new TreeModel(model);
     auto res = cast(Appender!(string[])*) data;
     res.put(m.getValueString(new TreeIter(iter), 0));
 }

@@ -19,6 +19,7 @@ class ExecuteAction : SimpleAction
             foreach (file; lister.view.getSelection.getSelection)
             {
                 import dopus : unescape;
+
                 file = Lister.calculatePath(lister.navigationStack.path, file.unescape);
                 if (file.isDir)
                 {

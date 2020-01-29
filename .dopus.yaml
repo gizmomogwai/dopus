@@ -23,3 +23,5 @@ lister.showListers:
     - <Control>l
 lister.flipSourceAndDestination:
     - <Control>f
+lister.info:
+    - <Control>i

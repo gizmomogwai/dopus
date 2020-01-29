@@ -13,7 +13,7 @@ class ShowNavigationStackAction : SimpleAction
     {
         super("showNavigationStack", null);
         addOnActivate(delegate(Variant, SimpleAction) {
-                import std.stdio : writeln;
+            import std.stdio : writeln;
 
             writeln(lister.navigationStack);
         });

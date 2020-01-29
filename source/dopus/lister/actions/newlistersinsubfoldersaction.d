@@ -20,7 +20,7 @@ class NewListersInSubfoldersAction : SimpleAction
     {
         super("newInSubfolders", null);
         addOnActivate(delegate(Variant, SimpleAction) {
-                import std.file : isDir;
+            import std.file : isDir;
 
             foreach (file; lister.view.getSelection.getSelection)
             {

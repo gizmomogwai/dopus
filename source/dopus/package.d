@@ -2,8 +2,12 @@ module dopus;
 
 import dopus.lister;
 import dopus.listers;
+import dopus.results;
 import gtk.Application;
 import gtk.Window;
+import gtkd.x.threads;
+import std.concurrency;
+import std.datetime.stopwatch;
 import std.stdio;
 import std.string;
 
@@ -28,9 +32,32 @@ class Layout
     }
 }
 
+void runTask(shared(Task) t, shared(Dopus) dopus)
+{
+    auto sw = StopWatch(AutoStart.yes);
+    auto taskResult = t.run();
+    sw.stop();
+    taskResult.duration = sw.peek;
+
+    dopus.addTaskResult(taskResult);
+}
+
+class TaskResult
+{
+    Duration duration;
+    abstract void mount(Dopus app, Window w);
+}
+
+abstract class Task
+{
+    //Tid tid;
+    public abstract TaskResult run() shared;
+}
+
 class Dopus : Application
 {
     Listers listers;
+    Results results;
     this(string[] args)
     {
         super("com.flopcode.Dopus", ApplicationFlags.HANDLES_COMMAND_LINE);
@@ -40,6 +67,7 @@ class Dopus : Application
 
         addOnActivate(delegate(GioAppliocation) {
             listers = new Listers(this);
+            results = new Results(this);
             layout.layout(listers);
             foreach (dir; args[1 .. $])
             {
@@ -49,6 +77,22 @@ class Dopus : Application
         addOnCommandLine(delegate(Scoped!ApplicationCommandLine, GioApplication) {
             activate();
             return 0;
+        });
+    }
+
+    auto enqueue(shared(Task) t)
+    {
+        //tasks ~= t;
+        //tids[t] = spawnLinked(&runTask, t, cast(shared) this);
+        spawnLinked(&runTask, t, cast(shared) this);
+        return this;
+    }
+
+    void addTaskResult(TaskResult result) shared
+    {
+        threadsAddIdleDelegate!(bool delegate())(delegate() {
+            (cast() this).results.add(result);
+            return false;
         });
     }
 }
