@@ -4,7 +4,8 @@ import dopus;
 import dopus.lister.actions;
 import gtk.Box;
 import gtk.Button;
-import gtk.TextView;
+import gtk.Container;
+import gtk.Label;
 import gtk.Window;
 import gtkd.x.treeselection;
 import std.file;
@@ -23,9 +24,11 @@ class InfoTaskResult : TaskResult
     ulong nrOfFiles;
     ulong size;
 
-    this(string[] input) {
+    this(string[] input)
+    {
         this.input = input;
     }
+
     auto add()
     {
         this.nrOfDirectories++;
@@ -39,18 +42,19 @@ class InfoTaskResult : TaskResult
         return this;
     }
 
-    override void mount(Dopus app, Window window) {
-        auto textView = new TextView();
-        textView.getBuffer().setText("%s in %s".format(toString, duration));
-        auto box = new Box(Orientation.VERTICAL, 0);
-        box.add(textView);
+    override Container mount(Dopus app)
+    {
+        auto box = new Box(Orientation.HORIZONTAL, 0);
+        auto label = new Label("%s in %s".format(toString, duration));
+        box.add(label);
         auto redo = new Button("redo");
         redo.addOnClicked(delegate(Button) {
-                app.enqueue(cast(shared)new InfoTask(input));
-            });
+            app.enqueue(cast(shared) new InfoTask(input));
+        });
         box.add(redo);
-        window.add(box);
+        return box;
     }
+
     override string toString() const
     {
         return "Result { nrOfDirectories=%s, nrOfFiles=%s, size=%s }".format(nrOfDirectories,
@@ -66,15 +70,15 @@ class InfoTask : Task
         this.selection ~= selection;
     }
 
-    public override TaskResult run() shared
+    public override TaskResult run(shared(Dopus) dopus) shared
     {
-        auto res = new InfoTaskResult((cast()this).selection);
+        auto res = new InfoTaskResult((cast() this).selection);
         foreach (s; selection)
         {
             if (s.isDir)
             {
                 res.add;
-                foreach (e; s.dirEntries(SpanMode.depth))
+                foreach (e; s.dirEntries(SpanMode.breadth))
                 {
                     if (e.isFile)
                     {
@@ -84,13 +88,23 @@ class InfoTask : Task
                     {
                         res.add;
                     }
+                    if (res.nrOfFiles % 10_000 == 0)
+                    {
+                        dopus.progress(cast(shared) this, "scanned %s files".format(res.nrOfFiles));
+                    }
                 }
             }
             else
             {
                 res.add(s.getSize);
+                if (res.nrOfFiles % 10_000 == 0)
+                {
+                    dopus.progress(cast(shared) this, "scanned %s files".format(res.nrOfFiles));
+                }
             }
         }
+        dopus.progress(cast(shared) this, "scanned %s files".format(res.nrOfFiles));
+        dopus.finish(cast(shared) this);
         return res;
     }
 }
@@ -126,7 +140,6 @@ class InfoAction : SimpleAction
     {
         super("info", null);
         addOnActivate(delegate(Variant, SimpleAction) {
-            writeln("info");
             string[] res;
             foreach (s; lister.view.getSelection.getSelection)
             {

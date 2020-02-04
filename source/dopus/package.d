@@ -3,7 +3,9 @@ module dopus;
 import dopus.lister;
 import dopus.listers;
 import dopus.results;
+import dopus.tasks;
 import gtk.Application;
+import gtk.Container;
 import gtk.Window;
 import gtkd.x.threads;
 import std.concurrency;
@@ -35,7 +37,7 @@ class Layout
 void runTask(shared(Task) t, shared(Dopus) dopus)
 {
     auto sw = StopWatch(AutoStart.yes);
-    auto taskResult = t.run();
+    auto taskResult = t.run(dopus);
     sw.stop();
     taskResult.duration = sw.peek;
 
@@ -45,19 +47,20 @@ void runTask(shared(Task) t, shared(Dopus) dopus)
 class TaskResult
 {
     Duration duration;
-    abstract void mount(Dopus app, Window w);
+    abstract Container mount(Dopus app);
 }
 
 abstract class Task
 {
     //Tid tid;
-    public abstract TaskResult run() shared;
+    public abstract TaskResult run(shared(Dopus)) shared;
 }
 
 class Dopus : Application
 {
     Listers listers;
     Results results;
+    Tasks tasks;
     this(string[] args)
     {
         super("com.flopcode.Dopus", ApplicationFlags.HANDLES_COMMAND_LINE);
@@ -68,6 +71,7 @@ class Dopus : Application
         addOnActivate(delegate(GioAppliocation) {
             listers = new Listers(this);
             results = new Results(this);
+            tasks = new Tasks(this);
             layout.layout(listers);
             foreach (dir; args[1 .. $])
             {
@@ -82,8 +86,7 @@ class Dopus : Application
 
     auto enqueue(shared(Task) t)
     {
-        //tasks ~= t;
-        //tids[t] = spawnLinked(&runTask, t, cast(shared) this);
+        tasks.add(t);
         spawnLinked(&runTask, t, cast(shared) this);
         return this;
     }
@@ -92,6 +95,22 @@ class Dopus : Application
     {
         threadsAddIdleDelegate!(bool delegate())(delegate() {
             (cast() this).results.add(result);
+            return false;
+        });
+    }
+
+    void progress(shared(Task) task, string s) shared
+    {
+        threadsAddIdleDelegate!(bool delegate())(delegate() {
+            (cast() this).tasks.update(task, s);
+            return false;
+        });
+    }
+
+    void finish(shared(Task) task) shared
+    {
+        threadsAddIdleDelegate!(bool delegate())(delegate() {
+            (cast() this).tasks.finish(task);
             return false;
         });
     }

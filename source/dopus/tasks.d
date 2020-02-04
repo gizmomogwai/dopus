@@ -1,22 +1,22 @@
-module dopus.results;
+module dopus.tasks;
 
 import dopus;
 import gtk.ApplicationWindow;
 import gtk.Box;
-import gtk.Button;
-import gtk.Container;
+import gtk.Label;
 import gtk.ScrolledWindow;
 
-class Results
+class Tasks
 {
     Dopus app;
     Box box;
-    Container[TaskResult] results;
+    Label[shared(Task)] labels;
+
     this(Dopus app)
     {
         this.app = app;
         auto window = new ApplicationWindow(app);
-        window.setTitle("Results");
+        window.setTitle("Tasks");
         auto all = new Box(Orientation.VERTICAL, 0);
         box = new Box(Orientation.VERTICAL, 0);
         all.packStart(new ScrolledWindow(box), true, true, 0);
@@ -25,17 +25,22 @@ class Results
         window.showAll();
     }
 
-    void add(TaskResult r)
+    void add(shared(Task) t)
     {
-        auto taskUi = r.mount(app);
-        results[r] = taskUi;
-        auto remove = new Button("X");
-        remove.addOnClicked(delegate(Button) {
-            box.remove(results[r]);
-            results.remove(r);
-        });
-        taskUi.add(remove);
-        taskUi.showAll;
-        box.add(taskUi);
+        auto label = new Label("");
+        labels[t] = label;
+        label.showAll;
+        box.add(label);
+    }
+
+    void update(shared(Task) t, string msg)
+    {
+        labels[t].setText(msg);
+    }
+
+    void finish(shared(Task) t)
+    {
+        box.remove(labels[t]);
+        labels.remove(t);
     }
 }
