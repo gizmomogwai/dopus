@@ -64,7 +64,7 @@ https://stackoverflow.com/questions/56029759/how-to-filter-a-gtk-tree-view-that-
 
 
 * GTK resources
-- [[https://api.gtkd.org/][GTKD Api Documentation]]
+- [[https://api.gtkd.org/][GTKD Api Documentation]] / [[http://gtk-d.dpldocs.info/][by adam d. ruppe]]
 - [[https://developer.gnome.org/gtk3/3.24/ch02.html][GTK Object Hierarchy]]
 - http://gexperts.com/wp/category/dlang/
 - https://gitlab.com/9898287/gtkdnotes
