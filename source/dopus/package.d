@@ -114,4 +114,9 @@ class Dopus : Application
             return false;
         });
     }
+    void layout(Window window) {
+        string s = window.getTitle();
+        writeln("Layouting: ", s);
+        window.resize(400, 200);
+    }
 }

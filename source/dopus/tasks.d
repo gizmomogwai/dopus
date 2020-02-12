@@ -21,7 +21,7 @@ class Tasks
         box = new Box(Orientation.VERTICAL, 0);
         all.packStart(new ScrolledWindow(box), true, true, 0);
         window.add(all);
-        window.resize(400, 200);
+        app.layout(window);
         window.showAll();
     }
 

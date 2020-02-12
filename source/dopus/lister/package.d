@@ -17,9 +17,14 @@ import gtk.ApplicationWindow;
 import gtk.Box;
 import gtk.Button;
 import gtk.CellRendererText;
+import gtk.HeaderBar;
+import gtk.Image;
 import gtk.ListStore;
 import gtk.MainWindow;
+import gtk.MenuButton;
+import gtk.PopoverMenu;
 import gtk.ScrolledWindow;
+import gtk.SpinButton;
 import gtk.TreeIter;
 import gtk.TreeView;
 import gtk.TreeViewColumn;
@@ -61,12 +66,36 @@ void startProcess(shared(string[]) command, shared void delegate() start,
     finished();
 }
 
-void fillListerTask(shared(Lister) lister, string path)
+class Cancelled
 {
+}
+
+void clearAndFillListerTask(shared(Lister) lister, string path, int depth)
+{
+    ownerTid.send(thisTid);
     lister.clear();
-    foreach (dirEntry; dirEntries(path, SpanMode.shallow))
+    new FillListerTask().run(lister, path, depth);
+}
+
+class FillListerTask
+{
+    shared(Cancelled) cancelled;
+    public void run(shared(Lister) lister, string path, int depth)
     {
-        lister.addEntry(dirEntry);
+        foreach (dirEntry; dirEntries(path, SpanMode.shallow))
+        {
+            if (dirEntry.isDir && depth > 1)
+            {
+                run(lister, dirEntry.name, depth - 1);
+            }
+            receiveTimeout(-1.seconds, (shared(Cancelled) c) { cancelled = c; });
+            lister.addEntry(thisTid, dirEntry);
+
+            if (cancelled)
+            {
+                break;
+            }
+        }
     }
 }
 
@@ -131,20 +160,68 @@ class Lister : ApplicationWindow
     bool isSource;
     bool isDestination;
 
+    HeaderBar header;
+    SpinButton depth;
     TreeView view;
     TreeViewColumn column;
     ListStore store;
 
     Workers workers;
+    Tid currentVisitor;
+
+    final Tid triggerClearAndFillListerTask()
+    {
+        currentVisitor.send(new shared Cancelled);
+        spawnLinked(&clearAndFillListerTask, cast(shared) this,
+                navigationStack.path, depth.getValueAsInt);
+        Tid done = thisTid;
+        while (done == thisTid)
+        {
+            // dfmt off
+            receive(
+                (Tid tid)
+                {
+                    done = tid;
+                },
+                (Variant v)
+                {
+                    writeln("Received ", v);
+                },
+            );
+            // dfmt on
+        }
+        return done;
+    }
 
     this(Dopus app, Listers listers_, string path_,
             NavigationStack navigationStack_ = new NavigationStack)
     {
         super(app);
+        this.currentVisitor = thisTid;
         this.app = app;
         navigationStack = navigationStack_;
         listers = listers_;
         workers = new Workers();
+
+        header = new HeaderBar();
+        header.setShowCloseButton(true);
+        depth = new SpinButton(1, 100, 1);
+        depth.setDigits(0);
+        depth.setValue(1);
+        depth.addOnValueChanged(delegate(SpinButton) {
+            currentVisitor = triggerClearAndFillListerTask();
+        });
+        depth.show;
+
+        auto configButton = new MenuButton();
+        configButton.setFocusOnClick(false);
+        auto iHamburger = new Image("open-menu-symbolic", IconSize.MENU);
+        configButton.add(iHamburger);
+        auto popover = new PopoverMenu();
+        popover.add(depth);
+        configButton.setPopover(popover);
+        header.packEnd(configButton);
+        setTitlebar(header);
 
         auto accelGroup = new AccelGroup();
         addAccelGroup(accelGroup);
@@ -260,7 +337,7 @@ class Lister : ApplicationWindow
 
     Lister updateTitle()
     {
-        setTitle("%s - %s".format(state, navigationStack.path.shorten));
+        header.setTitle("%s - %s".format(state, navigationStack.path.shorten));
         return this;
     }
 
@@ -361,7 +438,7 @@ class Lister : ApplicationWindow
                 workers.cancel();
             }
 
-            spawnLinked(&fillListerTask, cast(shared) this, navigationStack.path);
+            currentVisitor = triggerClearAndFillListerTask();
         }
         else
         {
@@ -423,8 +500,13 @@ class Lister : ApplicationWindow
         path = null;
     }
 
-    shared(Lister) addEntry(DirEntry entry) shared
+    shared(Lister) addEntry(Tid tid, DirEntry entry) shared
     {
+        if (tid !is cast() currentVisitor)
+        {
+            writeln("Ignoring ", entry);
+            return this;
+        }
         threadsAddIdleDelegate(delegate() {
             (cast() this).addEntry(entry);
             return false;
@@ -434,7 +516,7 @@ class Lister : ApplicationWindow
 
     Lister addEntry(DirEntry entry)
     {
-        auto s = entry.name.baseName;
+        auto s = entry.name.replace(navigationStack.path ~ "/", "");
         if (entry.isDir)
         {
             s ~= "/";
