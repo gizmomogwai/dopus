@@ -6,7 +6,7 @@ lister.newInSubfolders:
 lister.execute:
     - Return
 lister.parent:
-    - <Control>p
+    - BackSpace
 lister.back:
     - <Alt>b
 lister.forward:
