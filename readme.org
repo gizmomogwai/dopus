@@ -13,6 +13,12 @@
 - and to d's package manager [[http://code.dlang.org/][dub]], which I really enjoy
 
 ** Todo
+*** TODO speedup insertion of elements ...
+https://www.kksou.com/php-gtk2/sample-codes/speed-up-insert-of-20000-rows-to-treeview-Part-2.php
+the ui is responsitive, if the fs is slow. if its fast itlooks up (i
+guess because the idle thread is not idle anymore) 
+
+*** TODO unblock lister change of depth
 *** TODO window layout
 *** TODO send to destination
 ctrl- ->
@@ -54,9 +60,7 @@ https://stackoverflow.com/questions/56029759/how-to-filter-a-gtk-tree-view-that-
     - CLOSING NOTE [2020-01-23 Thu 21:02]
 *** DONE openterminal in linux
     CLOSED: [2020-01-23 Thu 22:47]
-
     - CLOSING NOTE [2020-01-23 Thu 22:47]
-
 *** DONE action to switch between src and dst
     CLOSED: [2020-01-23 Thu 22:55]
     - CLOSING NOTE [2020-01-23 Thu 22:55] \\
@@ -73,3 +77,4 @@ https://stackoverflow.com/questions/56029759/how-to-filter-a-gtk-tree-view-that-
 - https://github.com/gnunn1/tilix
 - https://github.com/gtkd-developers/GtkD
 - https://sites.google.com/site/gtkdtutorial/
+- http://giv.sourceforge.net/gtk-image-viewer/gtkimageviewer_tutorial.html

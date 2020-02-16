@@ -1,7 +1,5 @@
 module dopus.lister;
 
-//import tasks.fileinfotask;
-//import tasks.testarchivetask;
 import core.time;
 import dopus;
 import dopus.lister.actions;
@@ -19,12 +17,14 @@ import gtk.Button;
 import gtk.CellRendererText;
 import gtk.HeaderBar;
 import gtk.Image;
+import gtk.Label;
 import gtk.ListStore;
 import gtk.MainWindow;
 import gtk.MenuButton;
 import gtk.PopoverMenu;
 import gtk.ScrolledWindow;
 import gtk.SpinButton;
+import gtk.Table;
 import gtk.TreeIter;
 import gtk.TreeView;
 import gtk.TreeViewColumn;
@@ -43,7 +43,6 @@ import std.string;
 string shorten(string input)
 {
     import std.process : environment;
-
     return input.replace(environment["HOME"], "~");
 }
 
@@ -70,33 +69,38 @@ class Cancelled
 {
 }
 
-void clearAndFillListerTask(shared(Lister) lister, string path, int depth)
+void fillStoreTask(shared(ListStore) store, void delegate() done, string path, int depth, string base)
 {
-    ownerTid.send(thisTid);
-    lister.clear();
-    new FillListerTask().run(lister, path, depth);
-}
-
-class FillListerTask
-{
-    shared(Cancelled) cancelled;
-    public void run(shared(Lister) lister, string path, int depth)
+    class FillStoreTask
     {
-        foreach (dirEntry; dirEntries(path, SpanMode.shallow))
+        shared(Cancelled) cancelled;
+        public void run(shared(ListStore) sharedStore, string path, int depth, string base)
         {
-            if (dirEntry.isDir && depth > 1)
+            auto store = cast() sharedStore;
+            foreach (dirEntry; dirEntries(path, SpanMode.shallow))
             {
-                run(lister, dirEntry.name, depth - 1);
-            }
-            receiveTimeout(-1.seconds, (shared(Cancelled) c) { cancelled = c; });
-            lister.addEntry(thisTid, dirEntry);
-
-            if (cancelled)
-            {
-                break;
+                receiveTimeout(-1.seconds, (shared(Cancelled) c) { cancelled = c; });
+                
+                auto s = dirEntry.name.replace(base ~ "/", "");
+                if (dirEntry.isDir)
+                {
+                    s ~= "/";
+                }
+                store.setValue(store.createIter(), 0, s);
+                if (dirEntry.isDir && depth > 1)
+                {
+                    run(sharedStore, dirEntry.name, depth - 1, base);
+                }
+                if (cancelled)
+                {
+                    break;
+                }
             }
         }
     }
+
+    scope(exit) done();
+    new FillStoreTask().run(store, path, depth, base);
 }
 
 class Workers
@@ -128,16 +132,6 @@ class Workers
     }
 }
 
-class Status : Button
-{
-    Lister lister;
-    this(Lister lister)
-    {
-        super("status");
-        this.lister = lister;
-        addOnClicked(delegate(Button) { writeln("Clicked"); });
-    }
-}
 /++
  + A Lister is a dopus list that shows usually file-like things.
  + Each lister has associated tasks that may run (even in parallel)
@@ -164,61 +158,71 @@ class Lister : ApplicationWindow
     SpinButton depth;
     TreeView view;
     TreeViewColumn column;
-    ListStore store;
 
     Workers workers;
-    Tid currentVisitor;
+    Tid currentListLoader;
 
-    final Tid triggerClearAndFillListerTask()
+    final Tid loadList()
     {
-        currentVisitor.send(new shared Cancelled);
-        spawnLinked(&clearAndFillListerTask, cast(shared) this,
-                navigationStack.path, depth.getValueAsInt);
-        Tid done = thisTid;
-        while (done == thisTid)
-        {
-            // dfmt off
-            receive(
-                (Tid tid)
-                {
-                    done = tid;
-                },
-                (Variant v)
-                {
-                    writeln("Received ", v);
-                },
-            );
-            // dfmt on
-        }
-        return done;
+        currentListLoader.send(new shared Cancelled);
+
+        auto store = new ListStore([GType.STRING]);
+        shared done = delegate() {
+            writeln("done");
+            threadsAddIdleDelegate(delegate() {
+                showAndSortStore(cast() store);
+                return false;
+            });
+        };
+        return spawnLinked(&fillStoreTask, cast(shared)store, done,
+                           navigationStack.path, depth.getValueAsInt, navigationStack.path);
     }
 
-    this(Dopus app, Listers listers_, string path_,
-            NavigationStack navigationStack_ = new NavigationStack)
+    ListStore showAndSortStore(ListStore store)
+    {
+        view.setModel(store);
+        store.setSortColumnId(0, SortType.ASCENDING);
+        store.setSortFunc(0, &sortFunc, null, null);
+        return store;
+    }
+
+    this(Dopus app,
+         Listers listers_,
+         string path_,
+         NavigationStack navigationStack_ = new NavigationStack)
     {
         super(app);
-        this.currentVisitor = thisTid;
+        this.currentListLoader = thisTid;
         this.app = app;
-        navigationStack = navigationStack_;
-        listers = listers_;
-        workers = new Workers();
+        this.navigationStack = navigationStack_;
+        this.listers = listers_;
+        this.workers = new Workers();
 
+        buildUi();
+
+        visit(calculatePath(path_, "."));
+    }
+
+    private void buildUi() {
         header = new HeaderBar();
         header.setShowCloseButton(true);
         depth = new SpinButton(1, 100, 1);
         depth.setDigits(0);
         depth.setValue(1);
         depth.addOnValueChanged(delegate(SpinButton) {
-            currentVisitor = triggerClearAndFillListerTask();
+            currentListLoader = loadList();
         });
-        depth.show;
 
         auto configButton = new MenuButton();
         configButton.setFocusOnClick(false);
-        auto iHamburger = new Image("open-menu-symbolic", IconSize.MENU);
-        configButton.add(iHamburger);
+        configButton.add(new Image("open-menu-symbolic", IconSize.MENU));
         auto popover = new PopoverMenu();
-        popover.add(depth);
+        auto table = new Table(2, 2, false);
+        table.attach(new Label("depth"));
+        table.attach(depth);
+        table.attach(new Label("sort"));
+        table.showAll;
+        popover.add(table);
         configButton.setPopover(popover);
         header.packEnd(configButton);
         setTitlebar(header);
@@ -239,11 +243,8 @@ class Lister : ApplicationWindow
         auto textCellRenderer = new CellRendererText();
         column = new TreeViewColumn("name", textCellRenderer, "text", 0);
         view.appendColumn(column);
-        store = new ListStore([GType.STRING]);
-        store.setSortColumnId(0, SortType.ASCENDING);
-        store.setSortFunc(0, &sortFunc, null, null);
+        showAndSortStore(new ListStore([GType.STRING]));
 
-        view.setModel(store);
         auto box = new Box(Orientation.VERTICAL, 5);
         box.packStart(new ScrolledWindow(view), true, true, 0);
         box.packStart(new Status(this), false, true, 0);
@@ -261,8 +262,6 @@ class Lister : ApplicationWindow
         ListerActions.registerActions(this);
 
         wireShortcuts(app);
-
-        visit(calculatePath(path_, "."));
     }
 
     Lister refresh()
@@ -341,92 +340,6 @@ class Lister : ApplicationWindow
         return this;
     }
 
-    /+
-    fileList.keyEvent = (Widget w, KeyEvent e) {
-      // info("keyEvent: ", e.action.to!string, ", ", e.keyCode.to!string, ", ", e.text);
-      auto h = path ~ "/" ~ adapter.items.get((cast(ListWidget)w).selectedItemIndex).to!string;
-      switch (e.text) {
-      case "c"d:
-          workers.cancel();
-          break;
-      case "i"d:
-          fileInfo(h);
-          break;
-      case "n"d:
-          window.executeInUiThread({
-                  new Lister(h);
-              });
-          break;
-      case "t"d:
-          testArchive(h);
-          break;
-      case "x"d:
-          h(visitg);
-          break;
-      default:
-          break;
-      }
-
-      if (e.keyCode == 8 && e.action== KeyAction.KeyUp) {
-          visit(path.dirName);
-      }
-
-      return true;
-    };
-+/
-    /*
-  void treeView(string path) {
-    if (path.isDir) {
-      auto window = Platform.instance.createWindow("treemap '%s'".format(path).to!dstring, null);
-      auto vl = new VerticalLayout("vl");
-      vl.layoutWidth(FILL_PARENT).layoutHeight(FILL_PARENT);
-
-      auto text = new TextWidget("label", "no selection".to!dstring);
-      text.fontSize(32);
-      auto treemap = treeMapTaskInit(path);
-      treemap.backgroundColor(0x000000).layoutWidth(FILL_PARENT).layoutHeight(FILL_PARENT).padding(Rect(10, 10, 10, 10));
-      auto treeViewClear = delegate(string s) {
-      };
-      auto treeViewProgress = delegate(FileTreeMap treeMap, string s) {
-        //text.text = s.to!dstring;
-      };
-      auto treeViewFinished = delegate() {
-        info("finished");
-      };
-      auto task = treeMapTask(path,
-                                 cast(shared)treeViewClear,
-                                 cast(shared)treeViewProgress,
-                                 cast(shared)treeViewFinished);
-
-      vl.addChild(treemap);
-      vl.addChild(text);
-
-      window.mainWidget = vl;
-      window.show();
-    }
-  }
-  */
-    /+
-  void testArchive(string path) {
-    if (path.isFile) {
-      auto testArchiveClear = delegate(string path) {
-        infof("testing '%s'", path);
-      };
-
-      auto testArchiveProgress = delegate(string msg) {
-        info(msg);
-      };
-      auto testArchiveFinished= delegate() {
-        infof("testing '%s' finished", path);
-      };
-      auto task = spawnLinked(&testArchiveTask, path,
-                              cast(shared)testArchiveClear,
-                              cast(shared)testArchiveProgress,
-                              cast(shared)testArchiveFinished);
-      workers.workStarted(task);
-    }
-  }
-+/
     final void visit(string path_, bool putToNavigationStack = true)
     {
         if (path_.isDir)
@@ -438,7 +351,7 @@ class Lister : ApplicationWindow
                 workers.cancel();
             }
 
-            currentVisitor = triggerClearAndFillListerTask();
+            currentListLoader = loadList();
         }
         else
         {
@@ -464,66 +377,7 @@ class Lister : ApplicationWindow
             workers.workStarted(task);
         }
     }
-    /+
-  void fileInfo(string path) {
-    //if (workers.isBusy()) {
-    //workers.cancel();
-    //}
 
-    auto fileInfoClear = delegate(string path) {
-      info("info for '", path, "'");
-    };
-    auto fileInfoProgress = delegate(string msg) {
-      info("Result of fileInfo: ", msg);
-    };
-    auto fileInfoFinished = delegate() {
-      workers.finish();
-//      window.invalidate();
-    };
-
-    auto task = spawnLinked(&fileInfoTask, path,
-                            cast(shared)fileInfoClear,
-                            cast(shared)fileInfoProgress,
-                            cast(shared)fileInfoFinished);
-    workers.workStarted(task);
-  }
-+/
-
-    shared(Lister) clear() shared
-    {
-        threadsAddIdleDelegate(delegate() { (cast() store).clear(); return false; });
-        return this;
-    }
-
-    void clear(string path)
-    {
-        path = null;
-    }
-
-    shared(Lister) addEntry(Tid tid, DirEntry entry) shared
-    {
-        if (tid !is cast() currentVisitor)
-        {
-            writeln("Ignoring ", entry);
-            return this;
-        }
-        threadsAddIdleDelegate(delegate() {
-            (cast() this).addEntry(entry);
-            return false;
-        });
-        return this;
-    }
-
-    Lister addEntry(DirEntry entry)
-    {
-        auto s = entry.name.replace(navigationStack.path ~ "/", "");
-        if (entry.isDir)
-        {
-            s ~= "/";
-        }
-        store.setValue(store.createIter(), 0, s);
-        return this;
-    }
 }
 
 string getString(GtkTreeModel* model, GtkTreeIter* i, int column)
@@ -582,4 +436,15 @@ int compare(string a, string b)
 extern (C) int sortFunc(GtkTreeModel* model, GtkTreeIter* a, GtkTreeIter* b, void* userData)
 {
     return compare(model.getString(a, 0), model.getString(b, 0));
+}
+
+class Status : Button
+{
+    Lister lister;
+    this(Lister lister)
+    {
+        super("status");
+        this.lister = lister;
+        addOnClicked(delegate(Button) { writeln("Clicked"); });
+    }
 }
