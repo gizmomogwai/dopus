@@ -24,6 +24,7 @@ import gtk.MenuButton;
 import gtk.PopoverMenu;
 import gtk.ScrolledWindow;
 import gtk.SpinButton;
+import gtk.Spinner;
 import gtk.Table;
 import gtk.TreeIter;
 import gtk.TreeView;
@@ -43,6 +44,7 @@ import std.string;
 string shorten(string input)
 {
     import std.process : environment;
+
     return input.replace(environment["HOME"], "~");
 }
 
@@ -69,7 +71,8 @@ class Cancelled
 {
 }
 
-void fillStoreTask(shared(ListStore) store, void delegate() done, string path, int depth, string base)
+void fillStoreTask(shared(ListStore) store, void delegate() done, string path,
+        int depth, string base)
 {
     class FillStoreTask
     {
@@ -80,7 +83,7 @@ void fillStoreTask(shared(ListStore) store, void delegate() done, string path, i
             foreach (dirEntry; dirEntries(path, SpanMode.shallow))
             {
                 receiveTimeout(-1.seconds, (shared(Cancelled) c) { cancelled = c; });
-                
+
                 auto s = dirEntry.name.replace(base ~ "/", "");
                 if (dirEntry.isDir)
                 {
@@ -99,7 +102,8 @@ void fillStoreTask(shared(ListStore) store, void delegate() done, string path, i
         }
     }
 
-    scope(exit) done();
+    scope (exit)
+        done();
     new FillStoreTask().run(store, path, depth, base);
 }
 
@@ -158,6 +162,7 @@ class Lister : ApplicationWindow
     SpinButton depth;
     TreeView view;
     TreeViewColumn column;
+    Status status;
 
     Workers workers;
     Tid currentListLoader;
@@ -165,17 +170,18 @@ class Lister : ApplicationWindow
     final Tid loadList()
     {
         currentListLoader.send(new shared Cancelled);
-
+        status.working.start;
         auto store = new ListStore([GType.STRING]);
         shared done = delegate() {
             writeln("done");
             threadsAddIdleDelegate(delegate() {
                 showAndSortStore(cast() store);
+                status.working.stop;
                 return false;
             });
         };
-        return spawnLinked(&fillStoreTask, cast(shared)store, done,
-                           navigationStack.path, depth.getValueAsInt, navigationStack.path);
+        return spawnLinked(&fillStoreTask, cast(shared) store, done,
+                navigationStack.path, depth.getValueAsInt, navigationStack.path);
     }
 
     ListStore showAndSortStore(ListStore store)
@@ -186,10 +192,8 @@ class Lister : ApplicationWindow
         return store;
     }
 
-    this(Dopus app,
-         Listers listers_,
-         string path_,
-         NavigationStack navigationStack_ = new NavigationStack)
+    this(Dopus app, Listers listers_, string path_,
+            NavigationStack navigationStack_ = new NavigationStack)
     {
         super(app);
         this.currentListLoader = thisTid;
@@ -203,7 +207,8 @@ class Lister : ApplicationWindow
         visit(calculatePath(path_, "."));
     }
 
-    private void buildUi() {
+    private void buildUi()
+    {
         header = new HeaderBar();
         header.setShowCloseButton(true);
         depth = new SpinButton(1, 100, 1);
@@ -247,7 +252,8 @@ class Lister : ApplicationWindow
 
         auto box = new Box(Orientation.VERTICAL, 5);
         box.packStart(new ScrolledWindow(view), true, true, 0);
-        box.packStart(new Status(this), false, true, 0);
+        status = new Status(this);
+        box.packStart(status, false, true, 0);
         add(box);
         showAll();
         listers.register(this);
@@ -438,13 +444,15 @@ extern (C) int sortFunc(GtkTreeModel* model, GtkTreeIter* a, GtkTreeIter* b, voi
     return compare(model.getString(a, 0), model.getString(b, 0));
 }
 
-class Status : Button
+class Status : Box
 {
     Lister lister;
+    Spinner working;
     this(Lister lister)
     {
-        super("status");
+        super(Orientation.HORIZONTAL, 5);
         this.lister = lister;
-        addOnClicked(delegate(Button) { writeln("Clicked"); });
+        working = new Spinner();
+        packStart(working, true, true, 0);
     }
 }
