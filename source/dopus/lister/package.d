@@ -384,6 +384,13 @@ class Lister : ApplicationWindow
         }
     }
 
+    int getDepth() {
+        return depth.getValueAsInt;
+    }
+    Lister setDepth(int d) {
+        depth.setValue(d);
+        return this;
+    }
 }
 
 string getString(GtkTreeModel* model, GtkTreeIter* i, int column)

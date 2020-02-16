@@ -25,3 +25,7 @@ lister.flipSourceAndDestination:
     - <Control>f
 lister.info:
     - <Control>i
+lister.increaseDepth:
+    - <Control>0
+lister.decreaseDepth:
+    - <Control>9
