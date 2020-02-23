@@ -1,4 +1,6 @@
 ---
+
+# navigation
 lister.new:
     - <Control>n
 lister.newInSubfolders:
@@ -11,21 +13,29 @@ lister.back:
     - <Alt>b
 lister.forward:
     - <Alt>f
-lister.openTerminalHere:
-    - <Control>t
 lister.showNavigationStack:
     - <Alt>n
-lister.delete:
-    - <Alt>d
+
+# lister
 lister.refresh:
     - <Control>r
 lister.showListers:
     - <Control>l
 lister.flipSourceAndDestination:
     - <Control>f
-lister.info:
-    - <Control>i
 lister.increaseDepth:
     - <Control>0
 lister.decreaseDepth:
     - <Control>9
+
+# file operations
+lister.delete:
+    - <Alt>d
+lister.info:
+    - <Control>i
+lister.copy:
+    - <Control>c
+
+# misc operations
+lister.openTerminalHere:
+    - <Control>t

@@ -28,6 +28,7 @@ class Layout
     Layout layout(Window w)
     {
         w.resize(300, 300);
+        w.setResizable(true);
         w.move(x, 0);
         x += 300;
         return this;
@@ -114,7 +115,9 @@ class Dopus : Application
             return false;
         });
     }
-    void layout(Window window) {
+
+    void layout(Window window)
+    {
         string s = window.getTitle();
         writeln("Layouting: ", s);
         window.resize(400, 200);

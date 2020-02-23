@@ -79,25 +79,30 @@ void fillStoreTask(shared(ListStore) store, void delegate() done, string path,
         shared(Cancelled) cancelled;
         public void run(shared(ListStore) sharedStore, string path, int depth, string base)
         {
-            auto store = cast() sharedStore;
-            foreach (dirEntry; dirEntries(path, SpanMode.shallow))
-            {
-                receiveTimeout(-1.seconds, (shared(Cancelled) c) { cancelled = c; });
+            try {
+                auto store = cast() sharedStore;
+                foreach (dirEntry; dirEntries(path, SpanMode.shallow))
+                {
+                    writeln("dirEntry: ", dirEntry);
+                    receiveTimeout(-1.seconds, (shared(Cancelled) c) { cancelled = c; });
 
-                auto s = dirEntry.name.replace(base ~ "/", "");
-                if (dirEntry.isDir)
-                {
-                    s ~= "/";
+                    auto s = dirEntry.name.replace(base ~ "/", "");
+                    if (dirEntry.isDir)
+                    {
+                        s ~= "/";
+                    }
+                    store.setValue(store.createIter(), 0, s);
+                    if (dirEntry.isDir && depth > 1)
+                    {
+                        run(sharedStore, dirEntry.name, depth - 1, base);
+                    }
+                    if (cancelled)
+                    {
+                        break;
+                    }
                 }
-                store.setValue(store.createIter(), 0, s);
-                if (dirEntry.isDir && depth > 1)
-                {
-                    run(sharedStore, dirEntry.name, depth - 1, base);
-                }
-                if (cancelled)
-                {
-                    break;
-                }
+            } catch (Exception e) {
+                writeln("error while doing: ", path, e);
             }
         }
     }
@@ -173,7 +178,6 @@ class Lister : ApplicationWindow
         status.working.start;
         auto store = new ListStore([GType.STRING]);
         shared done = delegate() {
-            writeln("done");
             threadsAddIdleDelegate(delegate() {
                 showAndSortStore(cast() store);
                 status.working.stop;
@@ -384,10 +388,13 @@ class Lister : ApplicationWindow
         }
     }
 
-    int getDepth() {
+    int getDepth()
+    {
         return depth.getValueAsInt;
     }
-    Lister setDepth(int d) {
+
+    Lister setDepth(int d)
+    {
         depth.setValue(d);
         return this;
     }

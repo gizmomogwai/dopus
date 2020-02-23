@@ -99,4 +99,11 @@ class Listers : ApplicationWindow
     {
         return listers.length;
     }
+
+    public auto destination() {
+        if (listers.length > 1) {
+            return listers[1];
+        }
+        return null;
+    }
 }
