@@ -53,6 +53,11 @@ class TaskResult
 
 abstract class Task
 {
+    Lister[] listers;
+    this(Lister[] listers)
+    {
+        this.listers = listers;
+    }
     //Tid tid;
     public abstract TaskResult run(shared(Dopus)) shared;
 }
@@ -112,6 +117,10 @@ class Dopus : Application
     {
         threadsAddIdleDelegate!(bool delegate())(delegate() {
             (cast() this).tasks.finish(task);
+            foreach (l; (cast() task).listers)
+            {
+                l.refresh;
+            }
             return false;
         });
     }

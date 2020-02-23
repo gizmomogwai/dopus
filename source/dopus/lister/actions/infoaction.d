@@ -49,7 +49,7 @@ class InfoTaskResult : TaskResult
         box.add(label);
         auto redo = new Button("redo");
         redo.addOnClicked(delegate(Button) {
-            app.enqueue(cast(shared) new InfoTask(input));
+            // app.enqueue(cast(shared) new InfoTask(input));
         });
         box.add(redo);
         return box;
@@ -65,8 +65,9 @@ class InfoTaskResult : TaskResult
 class InfoTask : Task
 {
     string[] selection;
-    this(string[] selection)
+    this(Lister[] listers, string[] selection)
     {
+        super(listers);
         this.selection ~= selection;
     }
 
@@ -145,7 +146,7 @@ class InfoAction : SimpleAction
             {
                 res ~= (lister.navigationStack.path ~ "/" ~ s);
             }
-            auto task = new InfoTask(res);
+            auto task = new InfoTask([], res);
             lister.app.enqueue(cast(shared) task);
         });
     }

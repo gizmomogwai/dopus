@@ -16,8 +16,11 @@ class DeleteAction : SimpleAction
     {
         super("delete", null);
         addOnActivate(delegate(Variant, SimpleAction) {
-            foreach (file; lister.view.getSelection.getSelection)
+            foreach (file; lister.getSelectedFiles)
             {
+                import std.stdio : writeln;
+
+                writeln(file);
                 import std.file : isDir;
 
                 auto h = file.unescape;

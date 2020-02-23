@@ -2,6 +2,7 @@ module dopus.task;
 
 import core.time;
 import std.concurrency;
+
 /**
  * ListerTask runs in the background of a lister.
  * It is splitted into two parts:

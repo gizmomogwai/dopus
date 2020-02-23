@@ -31,6 +31,7 @@ import gtk.TreeView;
 import gtk.TreeViewColumn;
 import gtk.Widget;
 import gtkd.x.threads;
+import gtkd.x.treeselection;
 import std.array;
 import std.concurrency;
 import std.conv;
@@ -79,12 +80,15 @@ void fillStoreTask(shared(ListStore) store, void delegate() done, string path,
         shared(Cancelled) cancelled;
         public void run(shared(ListStore) sharedStore, string path, int depth, string base)
         {
-            try {
+            try
+            {
                 auto store = cast() sharedStore;
                 foreach (dirEntry; dirEntries(path, SpanMode.shallow))
                 {
                     writeln("dirEntry: ", dirEntry);
-                    receiveTimeout(-1.seconds, (shared(Cancelled) c) { cancelled = c; });
+                    receiveTimeout(-1.seconds, (shared(Cancelled) c) {
+                        cancelled = c;
+                    });
 
                     auto s = dirEntry.name.replace(base ~ "/", "");
                     if (dirEntry.isDir)
@@ -101,7 +105,9 @@ void fillStoreTask(shared(ListStore) store, void delegate() done, string path,
                         break;
                     }
                 }
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 writeln("error while doing: ", path, e);
             }
         }
@@ -276,6 +282,9 @@ class Lister : ApplicationWindow
 
     Lister refresh()
     {
+        import std.stdio;
+
+        writeln("refresh");
         visit(navigationStack.path, false);
         return this;
     }
@@ -397,6 +406,16 @@ class Lister : ApplicationWindow
     {
         depth.setValue(d);
         return this;
+    }
+
+    string[] getSelectedFiles()
+    {
+        string[] res;
+        foreach (s; view.getSelection.getSelection)
+        {
+            res ~= (navigationStack.path ~ "/" ~ s);
+        }
+        return res;
     }
 }
 

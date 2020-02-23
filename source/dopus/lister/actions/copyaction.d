@@ -5,7 +5,6 @@ import dopus;
 import gtk.Box;
 import gtk.Container;
 import gtk.Label;
-import gtkd.x.treeselection;
 import std.conv;
 import std.file;
 import std.path;
@@ -19,17 +18,21 @@ static this()
     ListerActions.register!CopyAction;
 }
 
-class CopyTaskResult : TaskResult {
+class CopyTaskResult : TaskResult
+{
     string[] results;
-    void add(string msg) {
+    void add(string msg)
+    {
         results ~= msg;
     }
+
     override Container mount(Dopus app)
     {
         auto vBox = new Box(Orientation.VERTICAL, 0);
         auto label = new Label("%s in %s".format(toString, duration));
         vBox.add(label);
-        foreach (s; results) {
+        foreach (s; results)
+        {
             vBox.add(new Label(s));
         }
         /*
@@ -47,28 +50,29 @@ class CopyTaskResult : TaskResult {
 class CopyTask : Task
 {
     string[] selection;
-    string to;
-    this(string[] selection, string to)
+    string destinationPath;
+    this(Lister[] listers, string[] selection, string destinationPath)
     {
+        super(listers);
+        this.destinationPath = destinationPath;
         this.selection ~= selection;
-        this.to = to;
     }
 
     public override TaskResult run(shared(Dopus) dopus) shared
     {
-        writeln("1");
-        return (cast()this).run(dopus);
+        return (cast() this).run(dopus);
     }
-    public TaskResult run(shared(Dopus) dopus) {
+
+    public TaskResult run(shared(Dopus) dopus)
+    {
         CopyTaskResult res = new CopyTaskResult;
-        auto msg = "Copy %s to %s".format(selection, to);
+        auto msg = "Copy %s to %s".format(selection, destinationPath);
         writeln(msg);
         foreach (s; selection)
         {
-            if (s.endsWith("/")) {
-                s = s[0..$-1];
-            }
-            auto command = ["rsync", "--archive", "--verbose", s, to];
+            auto command = [
+                "rsync", "--archive", "--verbose", s.unescape, destinationPath
+            ];
             command.info;
             auto exitStatus = execute(command);
             if (exitStatus.status == 0)
@@ -84,7 +88,6 @@ class CopyTask : Task
         }
         dopus.progress(cast(shared) this, "copied %s files".format(selection.length));
         dopus.finish(cast(shared) this);
-
         return res;
     }
 }
@@ -95,18 +98,14 @@ class CopyAction : SimpleAction
     {
         super("copy", null);
         addOnActivate(delegate(Variant, SimpleAction) {
-                auto destination = lister.listers.destination;
-                if (destination is null) {
-                    return;
-                }
-                string[] res;
-                foreach (s; lister.view.getSelection.getSelection)
-                {
-                    res ~= (lister.navigationStack.path ~ "/" ~ s);
-                }
-                auto task = new CopyTask(res, lister.listers.destination.navigationStack.path);
-                lister.app.enqueue(cast(shared) task);
+            auto destination = lister.listers.destination;
+            if (destination is null)
+            {
+                return;
             }
-        );
+            auto task = new CopyTask([lister, lister.listers.destination],
+                lister.getSelectedFiles, lister.listers.destination.navigationStack.path,);
+            lister.app.enqueue(cast(shared) task);
+        });
     }
 }
