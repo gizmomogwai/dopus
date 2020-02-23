@@ -13,6 +13,9 @@
 - and to d's package manager [[http://code.dlang.org/][dub]], which I really enjoy
 
 ** Todo
+*** TODO readd option to rerun a task ..
+problem is e.g. for the copy task, that it has to hold a list of listers
+
 *** TODO speedup insertion of elements ...
 https://www.kksou.com/php-gtk2/sample-codes/speed-up-insert-of-20000-rows-to-treeview-Part-2.php
 the ui is responsitive, if the fs is slow. if its fast itlooks up (i
