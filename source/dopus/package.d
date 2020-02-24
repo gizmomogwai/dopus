@@ -8,6 +8,7 @@ import gtk.Application;
 import gtk.Container;
 import gtk.Window;
 import gtkd.x.threads;
+import std.algorithm;
 import std.concurrency;
 import std.datetime.stopwatch;
 import std.stdio;
@@ -53,10 +54,10 @@ class TaskResult
 
 abstract class Task
 {
-    Lister[] listers;
-    this(Lister[] listers)
+    string[] listerPaths;
+    this(string[] listerPaths)
     {
-        this.listers = listers;
+        this.listerPaths = listerPaths;
     }
     //Tid tid;
     public abstract TaskResult run(shared(Dopus)) shared;
@@ -116,12 +117,18 @@ class Dopus : Application
     void finish(shared(Task) task) shared
     {
         threadsAddIdleDelegate!(bool delegate())(delegate() {
-            (cast() this).tasks.finish(task);
-            foreach (l; (cast() task).listers)
-            {
-                l.refresh;
-            }
-            return false;
+                (cast() this).tasks.finish(task);
+
+                foreach (path; (cast() task).listerPaths)
+                {
+                    auto h = delegate(Lister lister) {
+                        return lister.navigationStack.path == path;
+                    };
+                    foreach (l; (cast()this).listers.listers.filter!(a => h(a))) {
+                        l.refresh;
+                    }
+                }
+                return false;
         });
     }
 

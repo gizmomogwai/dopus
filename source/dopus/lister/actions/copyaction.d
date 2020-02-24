@@ -3,6 +3,7 @@ module dopus.lister.actions.copyaction;
 import dopus.lister.actions;
 import dopus;
 import gtk.Box;
+import gtk.Button;
 import gtk.Container;
 import gtk.Label;
 import std.conv;
@@ -20,7 +21,17 @@ static this()
 
 class CopyTaskResult : TaskResult
 {
+    string[] listerPaths;
+    string[] selection;
+    string destinationPath;
+    
     string[] results;
+    this(string[] listerPaths, string[] selection, string destinationPath) {
+        this.listerPaths = listerPaths;
+        this.selection = selection;
+        this.destinationPath = destinationPath;
+    }
+    
     void add(string msg)
     {
         results ~= msg;
@@ -35,25 +46,24 @@ class CopyTaskResult : TaskResult
         {
             vBox.add(new Label(s));
         }
-        /*
+
         auto redo = new Button("redo");
         redo.addOnClicked(delegate(Button) {
-            app.enqueue(cast(shared) new InfoTask(input));
+                app.enqueue(cast(shared) new CopyTask(listerPaths, selection, destinationPath));
         });
-        box.add(redo);
-        */
+        vBox.add(redo);
+
         return vBox;
     }
-
 }
 
 class CopyTask : Task
 {
     string[] selection;
     string destinationPath;
-    this(Lister[] listers, string[] selection, string destinationPath)
+    this(string[] listerPaths, string[] selection, string destinationPath)
     {
-        super(listers);
+        super(listerPaths);
         this.destinationPath = destinationPath;
         this.selection ~= selection;
     }
@@ -65,7 +75,7 @@ class CopyTask : Task
 
     public TaskResult run(shared(Dopus) dopus)
     {
-        CopyTaskResult res = new CopyTaskResult;
+        CopyTaskResult res = new CopyTaskResult(listerPaths, selection, destinationPath);
         auto msg = "Copy %s to %s".format(selection, destinationPath);
         writeln(msg);
         foreach (s; selection)
@@ -103,8 +113,11 @@ class CopyAction : SimpleAction
             {
                 return;
             }
-            auto task = new CopyTask([lister, lister.listers.destination],
-                lister.getSelectedFiles, lister.listers.destination.navigationStack.path,);
+            auto task = new CopyTask(
+              [destination.navigationStack.path],
+              lister.getSelectedFiles,
+              destination.navigationStack.path
+            );
             lister.app.enqueue(cast(shared) task);
         });
     }
