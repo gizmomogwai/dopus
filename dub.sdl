@@ -10,11 +10,13 @@ dependency "dyaml" version="~>0.8.0"
 configuration "debug" {
   targetType "executable"
   mainSourceFile "source/app.d"
+  targetPath "out/exe"
 }
 
 configuration "unittest" {
   dependency "unit-threaded" version="*"
   targetType "executable"
+  targetPath "out/exe"
   preBuildCommands "dub run unit-threaded -c gen_ut_main -- -f bin/ut.d"
   mainSourceFile "bin/ut.d"
   excludedSourceFiles "source/app.d" "source/dopus/package.d"
